@@ -1,0 +1,8 @@
+{
+    "git.autoRepositoryDetection": true,
+    "git.openRepositoryInParentFolders": "always",
+    "rust-analyzer.cargo.target": "armv7-unknown-linux-gnueabihf",
+    "rust-analyzer.cargo.extraArgs": [
+        "-Zbuild-std"
+    ]
+}

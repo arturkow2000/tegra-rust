@@ -1,0 +1,19 @@
+[package]
+name = "host1x-core"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+std = ["snafu/std"]
+
+[dependencies]
+arbitrary-int.workspace = true
+zerocopy.workspace = true
+host1x-reg.path = "../host1x-reg"
+host1x-client.path = "../host1x-client"
+snafu = { workspace = true, default-features = false }
+# Actually needed only for tests and for documentation.
+# But as cargo currently has no [doc-dependencies] or any equivalent we cannot
+# specify cannot add dependencies for documentation.
+gr2d-reg.path = "../gr2d-reg"

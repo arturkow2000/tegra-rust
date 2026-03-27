@@ -1,0 +1,11 @@
+[package]
+name = "host1x-reg"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+host1x-buffer.path = "../host1x-buffer"
+host1x-client.path = "../host1x-client"
+tock-registers.workspace = true
+arbitrary-int.workspace = true
+getset.workspace = true

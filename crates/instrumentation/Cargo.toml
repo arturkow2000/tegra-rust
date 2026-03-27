@@ -1,0 +1,13 @@
+[package]
+name = "instrumentation"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tracing-subscriber.workspace = true
+tracing-tracy.workspace = true
+tracing.workspace = true
+tracy-client = { workspace = true, features = ["demangle"] }
+once_cell.workspace = true
+host1x-buffer.path = "../host1x-buffer"
+host1x-drm.path = "../host1x-drm"

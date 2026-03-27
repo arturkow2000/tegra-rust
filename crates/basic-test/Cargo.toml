@@ -1,0 +1,16 @@
+[package]
+name = "basic-test"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+host1x-core.path = "../host1x-core"
+host1x-drm.path = "../host1x-drm"
+host1x-buffer.path = "../host1x-buffer"
+host1x-client.path = "../host1x-client"
+gr2d-reg.path = "../gr2d-reg"
+gr2d.path = "../gr2d"
+instrumentation.path = "../instrumentation"
+tracing.workspace = true
+colorspace.path = "../colorspace"
+embedded-graphics.workspace = true

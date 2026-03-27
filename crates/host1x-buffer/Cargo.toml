@@ -1,0 +1,8 @@
+[package]
+name = "host1x-buffer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+colorspace.path = "../colorspace"
+host1x-client.path = "../host1x-client"

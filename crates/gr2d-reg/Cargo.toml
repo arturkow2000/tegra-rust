@@ -1,0 +1,9 @@
+[package]
+name = "gr2d-reg"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+host1x-reg.path = "../host1x-reg"
+host1x-client.path = "../host1x-client"
+arbitrary-int.workspace = true

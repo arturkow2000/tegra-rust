@@ -1,0 +1,127 @@
+use std::{
+    io,
+    mem::ManuallyDrop,
+    ops::{Deref, DerefMut},
+    os::fd::{AsFd, AsRawFd},
+};
+
+use crate::{
+    buffer::BufferType,
+    mapping::{Mapped, MappingMode, Readable, Writable},
+    uapi::{v1::buffer::GenericBuffer, v2::ioctl},
+};
+
+use super::Channel;
+use colorspace::Format;
+use host1x_buffer::{Buffer, MappedBuffer, PixelBuffer, ReadableBuffer, WritableBuffer};
+
+#[derive(Debug)]
+pub struct BufferMapping<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
+{
+    channel: &'a Channel<C>,
+    buffer: &'a mut GenericBuffer<CMM, T>,
+    mapping_id: ManuallyDrop<MM::Handle<u32>>,
+}
+impl<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
+    BufferMapping<'a, C, T, CMM, MM>
+{
+    pub(super) fn new(
+        channel: &'a Channel<C>,
+        buffer: &'a mut GenericBuffer<CMM, T>,
+    ) -> io::Result<Self> {
+        // Must be enforced, GEM handles are local to DRM fd, and may trigger UB
+        // when handles created from different device instances are mixed up.
+        assert_eq!(
+            channel.dev.as_fd().as_raw_fd(),
+            buffer.dev.as_fd().as_raw_fd(),
+            "cannot map buffer to a channel open on another instance of the device"
+        );
+        match MM::create_host1x_mapping(|flags| {
+            ioctl::channel_map(&channel.dev, channel.context, buffer.handle, flags)
+        }) {
+            Ok(mapping_id) => Ok(Self {
+                channel,
+                buffer,
+                mapping_id: ManuallyDrop::new(mapping_id),
+            }),
+            Err(error) => Err(error),
+        }
+    }
+
+    pub fn buffer(&self) -> &GenericBuffer<CMM, T> {
+        self.buffer
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut GenericBuffer<CMM, T> {
+        self.buffer
+    }
+}
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Drop
+    for BufferMapping<'_, C, T, CMM, MM>
+{
+    fn drop(&mut self) {
+        let mapping_id = unsafe { MM::get_handle(ManuallyDrop::take(&mut self.mapping_id)) };
+        let r = ioctl::channel_unmap(&self.channel.dev, self.channel.context, mapping_id);
+        #[cfg(debug_assertions)]
+        r.unwrap();
+    }
+}
+// Allow dereference into inner buffer, this way may still read/write the buffer from CPU,
+// even while the buffer is mapped to Host1x. This is safe, because the GPU won't actually
+// touch our data unless a job is running. Other APIs are responsible for preventing
+// racy access to same data.
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Deref
+    for BufferMapping<'_, C, T, CMM, MM>
+{
+    type Target = GenericBuffer<CMM, T>;
+
+    fn deref(&self) -> &Self::Target {
+        self.buffer
+    }
+}
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> DerefMut
+    for BufferMapping<'_, C, T, CMM, MM>
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.buffer
+    }
+}
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Buffer
+    for BufferMapping<'_, C, T, CMM, MM>
+{
+    fn size(&self) -> u32 {
+        self.buffer.size()
+    }
+}
+impl<C: host1x_client::Client, CMM: MappingMode, MM: Mapped, F: Format> PixelBuffer
+    for BufferMapping<'_, C, crate::buffer::PixelBuffer<F>, CMM, MM>
+{
+    type Format = F;
+
+    fn width(&self) -> u32 {
+        self.buffer.width()
+    }
+
+    fn height(&self) -> u32 {
+        self.buffer.height()
+    }
+
+    fn stride(&self) -> u32 {
+        self.buffer.stride()
+    }
+}
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> MappedBuffer<C>
+    for BufferMapping<'_, C, T, CMM, MM>
+{
+    fn mapping_id(&self) -> u32 {
+        *MM::get_handle_ref(&self.mapping_id)
+    }
+}
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Readable> ReadableBuffer<C>
+    for BufferMapping<'_, C, T, CMM, MM>
+{
+}
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Writable> WritableBuffer<C>
+    for BufferMapping<'_, C, T, CMM, MM>
+{
+}

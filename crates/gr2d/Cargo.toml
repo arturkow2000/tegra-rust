@@ -1,0 +1,15 @@
+[package]
+name = "gr2d"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gr2d-reg.path = "../gr2d-reg"
+host1x-core.path = "../host1x-core"
+host1x-buffer.path = "../host1x-buffer"
+host1x-client.path = "../host1x-client"
+embedded-graphics.workspace = true
+arbitrary-int.workspace = true
+paste.workspace = true
+colorspace.path = "../colorspace"
+tracing.workspace = true

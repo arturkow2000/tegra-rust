@@ -1,0 +1,16 @@
+[package]
+name = "host1x-drm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+drm.workspace = true
+drm-ffi.workspace = true
+rustix = { workspace = true, features = ["fs", "mm", "time"] }
+snafu = { workspace = true, features = ["std"] }
+bitflags.workspace = true
+tracing.workspace = true
+host1x-core.path = "../host1x-core"
+host1x-buffer.path = "../host1x-buffer"
+host1x-client.path = "../host1x-client"
+colorspace.path = "../colorspace"
