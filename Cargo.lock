@@ -236,6 +236,7 @@ dependencies = [
  "host1x-client",
  "host1x-core",
  "paste",
+ "tock-registers",
  "tracing",
 ]
 

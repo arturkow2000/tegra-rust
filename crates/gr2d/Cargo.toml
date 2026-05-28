@@ -13,3 +13,4 @@ arbitrary-int.workspace = true
 paste.workspace = true
 colorspace.path = "../colorspace"
 tracing.workspace = true
+tock-registers.workspace = true
