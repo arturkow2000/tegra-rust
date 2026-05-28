@@ -53,7 +53,7 @@ macro_rules! __impl_registers {
             }
 
             pub const unsafe fn for_raw_mapping<C: Client>(mapping: u32, offset: u64, shift: u32) -> Relocatable<'static, Register, ReadWrite, C> {
-                Relocatable::for_raw_mapping(mapping, offset, shift)
+                unsafe { Relocatable::for_raw_mapping(mapping, offset, shift) }
             }
 
             pub fn read<C: Client>(buf: &impl ReadableBuffer<C>) -> Relocatable<'_, Register, ReadOnly, C> {
