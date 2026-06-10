@@ -27,6 +27,21 @@ impl<E: Rgb> Color<E> {
     pub fn b(&self) -> E::B {
         E::b(&self.0)
     }
+
+    #[inline]
+    pub fn set_r(&mut self, r: E::R) {
+        E::set_r(&mut self.0, r);
+    }
+
+    #[inline]
+    pub fn set_g(&mut self, g: E::G) {
+        E::set_g(&mut self.0, g);
+    }
+
+    #[inline]
+    pub fn set_b(&mut self, b: E::B) {
+        E::set_b(&mut self.0, b);
+    }
 }
 
 impl<E: RgbAlpha> Color<E> {
@@ -45,6 +60,11 @@ impl<E: RgbAlpha> Color<E> {
     #[inline]
     pub fn a(&self) -> E::A {
         E::a(&self.0)
+    }
+
+    #[inline]
+    pub fn set_a(&mut self, a: E::A) {
+        E::set_a(&mut self.0, a);
     }
 }
 

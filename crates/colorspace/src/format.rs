@@ -1,6 +1,7 @@
 use core::{fmt::Debug, marker::PhantomData, num::NonZeroUsize};
 
 use arbitrary_int::{prelude::*, traits::UnsignedInteger};
+use bytemuck::{AnyBitPattern, Pod};
 use drm_fourcc::DrmFourcc;
 use paste::paste;
 
@@ -44,13 +45,13 @@ pub trait Encoding: sealed::SealedEncoding {
 /// An RGB (Red Green Blue) encoding.
 pub trait Rgb: Encoding {
     /// Underlying type used for red channel value.
-    type R: UnsignedInteger;
+    type R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + 'static;
 
     /// Underlying type used for green channel value.
-    type G: UnsignedInteger;
+    type G: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + 'static;
 
     /// Underlying type used for blue channel value.
-    type B: UnsignedInteger;
+    type B: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + 'static;
 
     /// Get red channel value.
     fn r(stor: &Self::Storage) -> Self::R;
@@ -75,7 +76,7 @@ pub trait Rgb: Encoding {
 ///
 /// This trait is implemented for encodings that have a non-zero alpha channel size.
 pub trait RgbAlpha: Rgb {
-    type A: UnsignedInteger;
+    type A: UnsignedInteger<UnderlyingType: AnyBitPattern> + 'static;
 
     fn a(stor: &Self::Storage) -> Self::A;
     fn set_a(stor: &mut Self::Storage, a: Self::A);
@@ -202,9 +203,9 @@ impl<
     const BLACK: Color<Self> = Color((R::MIN, G::MIN, B::MIN, A::DEFAULT_ALPHA));
 }
 impl<
-    R: UnsignedInteger + Into<u32>,
-    G: UnsignedInteger + Into<u32>,
-    B: UnsignedInteger + Into<u32>,
+    R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    G: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    B: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
     A: DefaultAlpha,
 > Rgb for RgbGeneric<R, G, B, A>
 where
@@ -245,10 +246,10 @@ where
     }
 }
 impl<
-    R: UnsignedInteger + Into<u32>,
-    G: UnsignedInteger + Into<u32>,
-    B: UnsignedInteger + Into<u32>,
-    A: UnsignedInteger + Into<u32>,
+    R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    G: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    B: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    A: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
 > RgbAlpha for RgbGeneric<R, G, B, A>
 {
     type A = A;
@@ -327,6 +328,12 @@ pub trait Format: Debug {
     /// Direct Rendering Manager Four Character Code for current format.
     const DRM_FCC: DrmFourcc;
 
+    fn get_pixel(
+        x: u32,
+        y: u32,
+        planes: &[(u32, &[u8])],
+        bpp: BitsPerPixel,
+    ) -> Option<Color<Self::Encoding>>;
     fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32;
 }
 
@@ -343,6 +350,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgb_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -358,6 +372,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgb_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -373,6 +394,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgb_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -388,6 +416,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgba_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -403,6 +438,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgb_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -418,6 +460,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgba_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -433,6 +482,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgb_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -448,6 +504,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgba_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -463,6 +526,13 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgb_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
@@ -478,11 +548,19 @@ macro_rules! impl_format_linear {
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     rgba_to_gr2d_reg::<Self>(c.0)
                 }
+
+                fn get_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &[(u32, &[u8])],
+                    bpp: BitsPerPixel,
+                ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
             }
         }
     };
 }
 
+// TODO: deduplicate code by merging rgb and rgba functions into one.
 fn rgb_to_gr2d_reg<F: Format>(stor: <F::Encoding as Encoding>::Storage) -> u32
 where
     F::Encoding: Rgb,
@@ -514,6 +592,181 @@ where
         | <F::Encoding as Rgb>::g(&stor).value().into() << <F::Layout as RgbLayout>::G_OFFSET
         | <F::Encoding as Rgb>::b(&stor).value().into() << <F::Layout as RgbLayout>::B_OFFSET
         | <F::Encoding as RgbAlpha>::a(&stor).value().into() << <F::Layout as RgbaLayout>::A_OFFSET
+}
+
+fn get_ch<T: UnsignedInteger<UnderlyingType: AnyBitPattern>>(
+    buf: &[u8],
+    stride: u32,
+    x: u32,
+    y: u32,
+    bpp: BitsPerPixel,
+    ch_off: usize,
+) -> Option<T> {
+    let pixel_off = x as usize * stride as usize + y as usize * (bpp.as_u8() as usize / 8);
+    let off = pixel_off + ch_off;
+    let n_bytes = T::BITS.div_ceil(8);
+    let v = buf.get(off..off + n_bytes)?;
+
+    Some(T::new(*bytemuck::from_bytes(v)))
+}
+
+fn get_rgb_pixel<F: Format>(
+    x: u32,
+    y: u32,
+    planes: &[(u32, &[u8])],
+    bpp: BitsPerPixel,
+) -> Option<Color<<F as Format>::Encoding>>
+where
+    F::Encoding: Rgb,
+    F::Layout: RgbLayout,
+{
+    let &(r_plane_stride, r_plane) = planes.get(<F::Layout as RgbLayout>::R_PLANE)?;
+    let &(g_plane_stride, g_plane) = planes.get(<F::Layout as RgbLayout>::G_PLANE)?;
+    let &(b_plane_stride, b_plane) = planes.get(<F::Layout as RgbLayout>::B_PLANE)?;
+
+    let r = get_ch::<<F::Encoding as Rgb>::R>(
+        r_plane,
+        r_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::R_OFFSET,
+    )?;
+    let g = get_ch::<<F::Encoding as Rgb>::G>(
+        g_plane,
+        g_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::G_OFFSET,
+    )?;
+    let b = get_ch::<<F::Encoding as Rgb>::B>(
+        b_plane,
+        b_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::B_OFFSET,
+    )?;
+
+    let mut c = <F::Encoding as Encoding>::BLACK;
+    c.set_r(r);
+    c.set_g(g);
+    c.set_b(b);
+    Some(c)
+}
+
+fn get_rgba_pixel<F: Format>(
+    x: u32,
+    y: u32,
+    planes: &[(u32, &[u8])],
+    bpp: BitsPerPixel,
+) -> Option<Color<<F as Format>::Encoding>>
+where
+    F::Encoding: RgbAlpha,
+    F::Layout: RgbaLayout,
+{
+    let &(r_plane_stride, r_plane) = planes.get(<F::Layout as RgbLayout>::R_PLANE)?;
+    let &(g_plane_stride, g_plane) = planes.get(<F::Layout as RgbLayout>::G_PLANE)?;
+    let &(b_plane_stride, b_plane) = planes.get(<F::Layout as RgbLayout>::B_PLANE)?;
+    let &(a_plane_stride, a_plane) = planes.get(<F::Layout as RgbaLayout>::A_PLANE)?;
+
+    let r = get_ch::<<F::Encoding as Rgb>::R>(
+        r_plane,
+        r_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::R_OFFSET,
+    )?;
+    let g = get_ch::<<F::Encoding as Rgb>::G>(
+        g_plane,
+        g_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::G_OFFSET,
+    )?;
+    let b = get_ch::<<F::Encoding as Rgb>::B>(
+        b_plane,
+        b_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::B_OFFSET,
+    )?;
+    let a = get_ch::<<F::Encoding as RgbAlpha>::A>(
+        a_plane,
+        a_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbaLayout>::A_OFFSET,
+    )?;
+
+    let mut c = <F::Encoding as Encoding>::BLACK;
+    c.set_r(r);
+    c.set_g(g);
+    c.set_b(b);
+    c.set_a(a);
+    Some(c)
+}
+
+fn set_ch<T: UnsignedInteger<UnderlyingType: Pod>>(
+    buf: &mut [u8],
+    stride: u32,
+    x: u32,
+    y: u32,
+    bpp: BitsPerPixel,
+    ch_off: usize,
+    val: T,
+) -> bool {
+    let pixel_off = x as usize * stride as usize + y as usize * (bpp.as_u8() as usize / 8);
+    let off = pixel_off + ch_off;
+    let n_bytes = T::BITS.div_ceil(8);
+    let Some(v) = buf.get_mut(off..off + n_bytes) else {
+        return false;
+    };
+    v.copy_from_slice(bytemuck::bytes_of(&val.value()));
+
+    true
+}
+
+fn set_rgb_pixel<F: Format>(
+    x: u32,
+    y: u32,
+    planes: &mut [(u32, &mut [u8])],
+    bpp: BitsPerPixel,
+    color: Color<<F as Format>::Encoding>,
+) -> bool
+where
+    F::Encoding: Rgb,
+    F::Layout: RgbLayout,
+{
+    macro_rules! some_or_false {
+        ($v:expr) => {
+            match $v {
+                Some(t) => t,
+                None => return false,
+            }
+        };
+    }
+
+    let (r_plane_stride, r_plane) = some_or_false!(planes.get(<F::Layout as RgbLayout>::R_PLANE));
+    let (g_plane_stride, g_plane) = some_or_false!(planes.get(<F::Layout as RgbLayout>::G_PLANE));
+    let (b_plane_stride, b_plane) = some_or_false!(planes.get(<F::Layout as RgbLayout>::B_PLANE));
+
+    set_ch::<<F::Encoding as Rgb>::R>(
+        &mut **r_plane,
+        *r_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::R_OFFSET,
+        color.r(),
+    );
+
+    todo!()
 }
 
 impl_format_linear!(Abgr8888, abgr = (8, 8, 8, 8));

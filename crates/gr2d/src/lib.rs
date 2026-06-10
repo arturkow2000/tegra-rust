@@ -1,5 +1,7 @@
 #![no_std]
 
+pub mod format;
+
 use colorspace::{BitsPerPixel, Encoding, Format, color::Color};
 use embedded_graphics::primitives::Rectangle;
 use gr2d_reg::{
@@ -13,11 +15,16 @@ use host1x_core::{
 };
 use tock_registers::fields::FieldValue;
 
+use crate::format::Gr2dFormat;
+
 pub trait Gr2d {
     unsafe fn exec_blocking<C: CommandSequence<gr2d_reg::Client>>(&self, cmdseq: C);
 
     /// Clear entire buffer to black color.
-    fn clear<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(&self, buffer: &mut B) {
+    fn clear<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(&self, buffer: &mut B)
+    where
+        B::Format: Gr2dFormat,
+    {
         self.clear_with_color(buffer, <<B::Format as Format>::Encoding as Encoding>::BLACK)
     }
 
@@ -26,7 +33,9 @@ pub trait Gr2d {
         &self,
         buffer: &mut B,
         color: Color<<B::Format as Format>::Encoding>,
-    ) {
+    ) where
+        B::Format: Gr2dFormat,
+    {
         gr2d_fill_noclip(self, buffer, color);
     }
 
@@ -36,7 +45,9 @@ pub trait Gr2d {
         buffer: &mut B,
         color: Color<<B::Format as Format>::Encoding>,
         rect: Rectangle,
-    ) {
+    ) where
+        B::Format: Gr2dFormat,
+    {
         gr2d_fill_clip(self, buffer, color, rect);
     }
 }
@@ -45,7 +56,9 @@ fn gr2d_fill_noclip<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(
     gr2d: &(impl Gr2d + ?Sized),
     buffer: &mut B,
     color: Color<<B::Format as Format>::Encoding>,
-) {
+) where
+    B::Format: Gr2dFormat,
+{
     let width = buffer.width();
     let height = buffer.height();
     let stride = buffer.stride();
@@ -55,7 +68,8 @@ fn gr2d_fill_noclip<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(
         gr2d.exec_blocking((
             SetClass::<_, _, gr2d_reg::Client, _>::new(),
             Mask::<2, 0, gr2d_reg::Client, _>::new((TRIGGER0::raw(0x3a), CMDSEL::OUTPUT::MEMORY)),
-            Mask::<3, 0, gr2d_reg::Client, _>::new((
+            Mask::<4, 0, gr2d_reg::Client, _>::new((
+                B::Format::SIFMT + B::Format::DIFMT,
                 CTRL1::CLIPC::DISABLE,
                 CTRLMAIN::TURBOFILL::ENABLE
                     + CTRLMAIN::SRCSLD::ENABLE
@@ -82,7 +96,9 @@ fn gr2d_fill_clip<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(
     buffer: &mut B,
     color: Color<<B::Format as Format>::Encoding>,
     rect: Rectangle,
-) {
+) where
+    B::Format: Gr2dFormat,
+{
     let width = buffer.width();
     let height = buffer.height();
     let stride = buffer.stride();
@@ -92,7 +108,8 @@ fn gr2d_fill_clip<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(
         gr2d.exec_blocking((
             SetClass::<_, _, gr2d_reg::Client, _>::new(),
             Mask::<2, 0, gr2d_reg::Client, _>::new((TRIGGER0::raw(0x3a), CMDSEL::OUTPUT::MEMORY)),
-            Mask::<5, 0, gr2d_reg::Client, _>::new((
+            Mask::<6, 0, gr2d_reg::Client, _>::new((
+                B::Format::SIFMT + B::Format::DIFMT,
                 CTRL1::CLIPC::DRAW_INSIDE,
                 // Can't use turbofill with clipping
                 CTRLMAIN::TURBOFILL::DISABLE

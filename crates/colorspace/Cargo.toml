@@ -7,3 +7,4 @@ edition = "2024"
 drm-fourcc.workspace = true
 arbitrary-int.workspace = true
 paste.workspace = true
+bytemuck.workspace = true

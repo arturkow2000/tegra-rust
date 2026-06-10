@@ -3,7 +3,7 @@ extern crate tracing;
 
 use std::{mem::MaybeUninit, num::NonZeroU32};
 
-use colorspace::{Rgba8888, color::Color};
+use colorspace::{Bgra8888, Rgba8888, color::Color};
 use embedded_graphics::{
     geometry::{Point, Size},
     primitives::Rectangle,
@@ -24,10 +24,10 @@ fn main() {
     info!("doing some GR2D tests");
 
     let gpu = TegraDRM::open("/dev/dri/card1").unwrap();
-    let mut buf = Buffer::<PixelBuffer<Rgba8888>>::new(
+    let mut buf = Buffer::<PixelBuffer<Bgra8888>>::new(
         &gpu,
-        NonZeroU32::new(16).unwrap(),
-        NonZeroU32::new(16).unwrap(),
+        NonZeroU32::new(256).unwrap(),
+        NonZeroU32::new(256).unwrap(),
     )
     .unwrap()
     .mmap_rw()
@@ -65,7 +65,7 @@ fn main() {
         Color::rgb(0, 255, 0),
         Rectangle {
             top_left: Point::new(10, 10),
-            size: Size::new(10, 10),
+            size: Size::new(100, 100),
         },
     );
     warn!("after: {:#x?}", &mapping[..16]);

@@ -11,3 +11,5 @@ tracy-client = { workspace = true, features = ["demangle"] }
 once_cell.workspace = true
 host1x-buffer.path = "../host1x-buffer"
 host1x-drm.path = "../host1x-drm"
+colorspace.path = "../colorspace"
+palette.workspace = true

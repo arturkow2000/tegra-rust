@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate tracing;
 
+use colorspace::{Encoding, Format};
 use host1x_buffer::PixelBuffer;
 use once_cell::sync::OnceCell;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -10,13 +11,56 @@ register_demangler!();
 
 static CONTEXT: OnceCell<TracingContext> = OnceCell::new();
 
+pub trait ToTracy {
+    fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B);
+}
+impl ToTracy for colorspace::Rgba8888 {
+    fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B) {
+    }
+}
+impl ToTracy for colorspace::Bgra8888 {
+    fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B) {
+        let dst_stride = buf.width() as usize
+            * <<B::Format as Format>::Encoding as Encoding>::BPP.as_u8() as usize
+            / 8;
+        let mut dst = vec![0u8; buf.height() as usize * dst_stride];
+
+        let planes = [(buf.stride(), buf.as_ref())];
+        for y in 0..buf.height() {
+            for x in 0..buf.width() {
+                let pixel = Self::get_pixel(
+                    x,
+                    y,
+                    &planes,
+                    <<B::Format as Format>::Encoding as Encoding>::BPP,
+                )
+                .unwrap();
+            }
+        }
+        todo!()
+    }
+}
+
 pub struct TracingContext {
     tracy: tracy_client::Client,
     gr2d: tracy_client::GpuContext,
 }
 
 impl TracingContext {
-    pub fn frame(&self, buf: &(impl PixelBuffer + AsRef<[u8]>)) {
+    pub fn frame<B: PixelBuffer + AsRef<[u8]>>(&self, buf: &B)
+    where
+        B::Format: ToTracy,
+    {
+        /*let mut dst = vec![0u8; buf.size() as usize];
+        for row in 0..buf.height() {
+            let offset = row as usize * buf.stride() as usize;
+            let pixels = &buf.as_ref()[offset
+                ..offset
+                    + buf.width() as usize
+                        * <<B::Format as Format>::Encoding as Encoding>::BPP.as_u8() as usize
+                        / 4];
+        }
+
         // FIXME: need to handle format conversion image scaling
         self.tracy.frame_mark();
         self.tracy.frame_image(
@@ -25,7 +69,7 @@ impl TracingContext {
             buf.height().try_into().unwrap(),
             1,
             false,
-        );
+        );*/
     }
 }
 
