@@ -9,7 +9,7 @@ use crate::device::TegraDRM;
 bitflags! {
     #[allow(nonstandard_style)]
      pub struct drm_tegra_gem_create_flags: u32 {
-        const TILED = 0 << 1;
+        const TILED = 1 << 0;
         const BOTTOM_UP = 1 << 1;
     }
 }
