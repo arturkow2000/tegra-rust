@@ -76,7 +76,7 @@ pub trait Rgb: Encoding {
 ///
 /// This trait is implemented for encodings that have a non-zero alpha channel size.
 pub trait RgbAlpha: Rgb {
-    type A: UnsignedInteger<UnderlyingType: AnyBitPattern> + 'static;
+    type A: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + 'static;
 
     fn a(stor: &Self::Storage) -> Self::A;
     fn set_a(stor: &mut Self::Storage, a: Self::A);
@@ -334,6 +334,15 @@ pub trait Format: Debug {
         planes: &[(u32, &[u8])],
         bpp: BitsPerPixel,
     ) -> Option<Color<Self::Encoding>>;
+
+    fn set_pixel(
+        x: u32,
+        y: u32,
+        planes: &mut [(u32, &mut [u8])],
+        bpp: BitsPerPixel,
+        color: Color<Self::Encoding>,
+    ) -> bool;
+
     fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32;
 }
 
@@ -357,6 +366,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -379,6 +396,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -401,6 +426,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -423,6 +456,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgba_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -445,6 +486,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -467,6 +516,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgba_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -489,6 +546,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -511,6 +576,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgba_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -533,6 +606,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -555,6 +636,14 @@ macro_rules! impl_format_linear {
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
                 ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
+
+                fn set_pixel(
+                    x: u32,
+                    y: u32,
+                    planes: &mut [(u32, &mut [u8])],
+                    bpp: BitsPerPixel,
+                    color: Color<Self::Encoding>,
+                ) -> bool { set_rgba_pixel::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
@@ -602,8 +691,13 @@ fn get_ch<T: UnsignedInteger<UnderlyingType: AnyBitPattern>>(
     bpp: BitsPerPixel,
     ch_off: usize,
 ) -> Option<T> {
-    let pixel_off = x as usize * stride as usize + y as usize * (bpp.as_u8() as usize / 8);
-    let off = pixel_off + ch_off;
+    // TODO: accept ch_off as generic parameter when stabilized? Currently we need #![feature(generic_const_exprs)]
+
+    // We'll get to this later
+    debug_assert!(ch_off % 8 == 0);
+
+    let pixel_off = y as usize * stride as usize + x as usize * (bpp.as_u8() as usize / 8);
+    let off = pixel_off + ch_off / 8;
     let n_bytes = T::BITS.div_ceil(8);
     let v = buf.get(off..off + n_bytes)?;
 
@@ -721,8 +815,13 @@ fn set_ch<T: UnsignedInteger<UnderlyingType: Pod>>(
     ch_off: usize,
     val: T,
 ) -> bool {
-    let pixel_off = x as usize * stride as usize + y as usize * (bpp.as_u8() as usize / 8);
-    let off = pixel_off + ch_off;
+    // TODO: accept ch_off as generic parameter when stabilized? Currently we need #![feature(generic_const_exprs)]
+
+    // We'll get to this later
+    debug_assert!(ch_off % 8 == 0);
+
+    let pixel_off = y as usize * stride as usize + x as usize * (bpp.as_u8() as usize / 8);
+    let off = pixel_off + ch_off / 8;
     let n_bytes = T::BITS.div_ceil(8);
     let Some(v) = buf.get_mut(off..off + n_bytes) else {
         return false;
@@ -752,10 +851,17 @@ where
         };
     }
 
-    let (r_plane_stride, r_plane) = some_or_false!(planes.get(<F::Layout as RgbLayout>::R_PLANE));
-    let (g_plane_stride, g_plane) = some_or_false!(planes.get(<F::Layout as RgbLayout>::G_PLANE));
-    let (b_plane_stride, b_plane) = some_or_false!(planes.get(<F::Layout as RgbLayout>::B_PLANE));
+    // Check here that all channels are present before we do any changes to underlying data.
+    //
+    // I believe compiler should optimize further calls to planes.get_mut(), but I haven't checked it.
+    // As we need to use get_mut() instead of get() to modify anything through dereference we can't hold
+    // references to multiple planes at the same time.
+    some_or_false!(planes.get(<F::Layout as RgbLayout>::R_PLANE));
+    some_or_false!(planes.get(<F::Layout as RgbLayout>::G_PLANE));
+    some_or_false!(planes.get(<F::Layout as RgbLayout>::B_PLANE));
 
+    let (r_plane_stride, r_plane) =
+        some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::R_PLANE));
     set_ch::<<F::Encoding as Rgb>::R>(
         &mut **r_plane,
         *r_plane_stride,
@@ -766,7 +872,111 @@ where
         color.r(),
     );
 
-    todo!()
+    let (g_plane_stride, g_plane) =
+        some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::G_PLANE));
+    set_ch::<<F::Encoding as Rgb>::G>(
+        &mut **g_plane,
+        *g_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::G_OFFSET,
+        color.g(),
+    );
+
+    let (b_plane_stride, b_plane) =
+        some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::B_PLANE));
+    set_ch::<<F::Encoding as Rgb>::B>(
+        &mut **b_plane,
+        *b_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::B_OFFSET,
+        color.b(),
+    );
+
+    true
+}
+
+fn set_rgba_pixel<F: Format>(
+    x: u32,
+    y: u32,
+    planes: &mut [(u32, &mut [u8])],
+    bpp: BitsPerPixel,
+    color: Color<<F as Format>::Encoding>,
+) -> bool
+where
+    F::Encoding: RgbAlpha,
+    F::Layout: RgbaLayout,
+{
+    macro_rules! some_or_false {
+        ($v:expr) => {
+            match $v {
+                Some(t) => t,
+                None => return false,
+            }
+        };
+    }
+
+    // Check here that all channels are present before we do any changes to underlying data.
+    //
+    // I believe compiler should optimize further calls to planes.get_mut(), but I haven't checked it.
+    // As we need to use get_mut() instead of get() to modify anything through dereference we can't hold
+    // references to multiple planes at the same time.
+    some_or_false!(planes.get(<F::Layout as RgbLayout>::R_PLANE));
+    some_or_false!(planes.get(<F::Layout as RgbLayout>::G_PLANE));
+    some_or_false!(planes.get(<F::Layout as RgbLayout>::B_PLANE));
+    some_or_false!(planes.get(<F::Layout as RgbaLayout>::A_PLANE));
+
+    let (r_plane_stride, r_plane) =
+        some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::R_PLANE));
+    set_ch::<<F::Encoding as Rgb>::R>(
+        &mut **r_plane,
+        *r_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::R_OFFSET,
+        color.r(),
+    );
+
+    let (g_plane_stride, g_plane) =
+        some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::G_PLANE));
+    set_ch::<<F::Encoding as Rgb>::G>(
+        &mut **g_plane,
+        *g_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::G_OFFSET,
+        color.g(),
+    );
+
+    let (b_plane_stride, b_plane) =
+        some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::B_PLANE));
+    set_ch::<<F::Encoding as Rgb>::B>(
+        &mut **b_plane,
+        *b_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbLayout>::B_OFFSET,
+        color.b(),
+    );
+    let (a_plane_stride, a_plane) =
+        some_or_false!(planes.get_mut(<F::Layout as RgbaLayout>::A_PLANE));
+    set_ch::<<F::Encoding as RgbAlpha>::A>(
+        &mut **a_plane,
+        *a_plane_stride,
+        x,
+        y,
+        bpp,
+        <F::Layout as RgbaLayout>::A_OFFSET,
+        color.a(),
+    );
+
+    true
 }
 
 impl_format_linear!(Abgr8888, abgr = (8, 8, 8, 8));
