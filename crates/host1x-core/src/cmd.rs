@@ -10,6 +10,8 @@ use zerocopy::little_endian::U32 as U32LE;
 #[cfg(doc)]
 use gr2d_reg::{CTRL0, CTRL1, SBFMT0};
 
+use crate::cmdseq::CommandSequence;
+
 macro_rules! min_uint {
     ($x:expr) => { $x };
     ($x:expr, $($rest:expr),+) => {{
@@ -391,28 +393,6 @@ macro_rules! impl_write_incr_args {
 #[rustfmt::skip] impl_write_incr_args!((R0, 0), (R1, 1), (R2, 2), (R3, 3), (R4, 4), (R5, 5), (R6, 6), (R7, 7), (R8, 8), (R9, 9), (R10, 10), (R11, 11), (R12, 12), (R13, 13), (R14, 14), (R15, 15), (R16, 16), (R17, 17), (R18, 18), (R19, 19), (R20, 20), (R21, 21), (R22, 22), (R23, 23), (R24, 24), (R25, 25), (R26, 26), (R27, 27), (R28, 28), (R29, 29), (R30, 30));
 #[rustfmt::skip] impl_write_incr_args!((R0, 0), (R1, 1), (R2, 2), (R3, 3), (R4, 4), (R5, 5), (R6, 6), (R7, 7), (R8, 8), (R9, 9), (R10, 10), (R11, 11), (R12, 12), (R13, 13), (R14, 14), (R15, 15), (R16, 16), (R17, 17), (R18, 18), (R19, 19), (R20, 20), (R21, 21), (R22, 22), (R23, 23), (R24, 24), (R25, 25), (R26, 26), (R27, 27), (R28, 28), (R29, 29), (R30, 30), (R31, 31));
 
-/// A valid Host1x command.
-///
-/// # Safety
-/// - [`Command::words`] must return a slice of exactly [`Command::N_WORDS`] elements.
-/// - [`Command::relocs`] must return a slice of exactly [`Command::N_RELOCS`] elements.
-pub unsafe trait Command<C: Client> {
-    /// Numbers of 32-bit words the full command is build of. That includes
-    /// the opcode word (first word), and all following arguments.
-    const N_WORDS: usize;
-
-    /// The total number of relocations for entire command.
-    const N_RELOCS: usize;
-
-    /// Return an array of raw 32-bit words as understood by the HOST1X interface.
-    // FIXME: should return `&[U32LE; Self::N_WORDS]` but we can't do that
-    // without https://github.com/rust-lang/rust/issues/76560, again...
-    fn words(&self) -> &[U32LE];
-
-    /// High-level description of relocations to be performed prior to command submission.
-    fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation>;
-}
-
 const OPCODE_SETCL: u4 = u4::new(0);
 const OPCODE_INCR: u4 = u4::new(1);
 const OPCODE_NONINCR: u4 = u4::new(2);
@@ -553,17 +533,19 @@ impl<const N: usize, const N_RELOCS: usize, C: Client, Args: SetCLArgs<C>>
     }
 }
 
-unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: SetCLArgs<C>> Command<C>
+unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: SetCLArgs<C>> CommandSequence<C>
     for SetClass<N, N_RELOCS, C, Args>
 {
     const N_WORDS: usize = N + 1;
     const N_RELOCS: usize = Args::N_RELOCS;
 
-    fn words(&self) -> &[U32LE] {
+    fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
         // Safety:
         // - first_word is an U32LE, followed by an array [U32LE; N]
         // - self has #[repr(C)]
         unsafe { core::slice::from_raw_parts(&self.first_word as *const U32LE, N + 1) }
+            .iter()
+            .copied()
     }
 
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation> {
@@ -669,17 +651,19 @@ impl<const N: usize, const N_RELOCS: usize, C: Client, Args: WriteIncrArgs<C>>
     }
 }
 
-unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: WriteIncrArgs<C>> Command<C>
-    for WriteIncr<N, N_RELOCS, C, Args>
+unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: WriteIncrArgs<C>>
+    CommandSequence<C> for WriteIncr<N, N_RELOCS, C, Args>
 {
     const N_WORDS: usize = N + 1;
     const N_RELOCS: usize = N_RELOCS;
 
-    fn words(&self) -> &[U32LE] {
+    fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
         // Safety:
         // - first_word is an U32LE, followed by an array [U32LE; N]
         // - self has #[repr(C)]
         unsafe { core::slice::from_raw_parts(&self.first_word as *const U32LE, N + 1) }
+            .iter()
+            .copied()
     }
 
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation> {
@@ -726,16 +710,20 @@ impl<const N: usize, C: Client, Reg: Register<C>> WriteNoIncr<N, C, Reg> {
     }
 }
 
-unsafe impl<const N: usize, C: Client, Reg: Register<C>> Command<C> for WriteNoIncr<N, C, Reg> {
+unsafe impl<const N: usize, C: Client, Reg: Register<C>> CommandSequence<C>
+    for WriteNoIncr<N, C, Reg>
+{
     const N_WORDS: usize = N + 1;
     // FIXME: properly implement this
     const N_RELOCS: usize = 0;
 
-    fn words(&self) -> &[U32LE] {
+    fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
         // Safety:
         // - first_word is an U32LE, followed by an array [U32LE; N]
         // - self has #[repr(C)]
         unsafe { core::slice::from_raw_parts(&self.first_word as *const U32LE, N + 1) }
+            .iter()
+            .copied()
     }
 
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation> {
@@ -859,17 +847,19 @@ impl<const N: usize, const N_RELOCS: usize, C: Client, Args: MaskArgs<C>>
     }
 }
 
-unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: MaskArgs<C>> Command<C>
+unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: MaskArgs<C>> CommandSequence<C>
     for Mask<N, N_RELOCS, C, Args>
 {
     const N_WORDS: usize = N + 1;
     const N_RELOCS: usize = N_RELOCS;
 
-    fn words(&self) -> &[U32LE] {
+    fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
         // Safety:
         // - first_word is an U32LE, followed by an array [U32LE; N]
         // - self has #[repr(C)]
         unsafe { core::slice::from_raw_parts(&self.first_word as *const U32LE, N + 1) }
+            .iter()
+            .copied()
     }
 
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation> {
@@ -892,9 +882,9 @@ mod tests {
     use gr2d_reg::{ALPHABLEND, CTRL0, CTRL1, CTRLMAIN, Client as Gr2d, SBFMT0};
     use zerocopy::little_endian::U32 as U32LE;
 
-    use crate::reg::Register;
+    use crate::{cmdseq::CommandSequence, reg::Register};
 
-    use super::{Command, Mask, SetClass, WriteNoIncr, op_mask, op_nonincr, op_setcl};
+    use super::{Mask, SetClass, WriteNoIncr, op_mask, op_nonincr, op_setcl};
 
     macro_rules! reg_off {
         ($reg:ident) => {
@@ -906,8 +896,6 @@ mod tests {
     fn test_setcl_gen() {
         let words: Vec<u32> = SetClass::<_, _, Gr2d, _>::new()
             .words()
-            .iter()
-            .copied()
             .map(U32LE::get)
             .collect();
         assert_eq!(words, [op_setcl(u10::new(0x51), u12::new(0), u6::new(0))]);
@@ -919,8 +907,6 @@ mod tests {
             ALPHABLEND::ALPHA.val(172),
         ))
         .words()
-        .iter()
-        .copied()
         .map(U32LE::get)
         .collect();
         assert_eq!(
@@ -943,8 +929,6 @@ mod tests {
             SBFMT0::raw(0x42),
         ])
         .words()
-        .iter()
-        .copied()
         .map(U32LE::get)
         .collect();
         assert_eq!(words, [op_nonincr(u12::new(0x1c), 2), 0x8008, 0x42]);
@@ -954,8 +938,6 @@ mod tests {
     fn test_mask_gen() {
         let words: Vec<u32> = Mask::<1, 0, Gr2d, _>::new((SBFMT0::raw(0xdeadbeef),))
             .words()
-            .iter()
-            .copied()
             .map(U32LE::get)
             .collect();
         assert_eq!(words, [op_mask(reg_off!(SBFMT0), 0b1), 0xdeadbeef]);
@@ -963,8 +945,6 @@ mod tests {
         let words: Vec<u32> =
             Mask::<2, 0, Gr2d, _>::new((SBFMT0::raw(0xdeadbeef), CTRL0::raw(0xc0de1ed0)))
                 .words()
-                .iter()
-                .copied()
                 .map(U32LE::get)
                 .collect();
         assert_eq!(

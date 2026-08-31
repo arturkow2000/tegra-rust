@@ -5,12 +5,7 @@ use core::{iter::FusedIterator, mem::MaybeUninit, num::NonZeroUsize, ops::Deref,
 use host1x_client::Client;
 use host1x_reg::reloc::Relocation;
 use snafu::{Snafu, ensure};
-
-use crate::cmd::Command;
-
-mod sealed {
-    pub trait Sealed<C> {}
-}
+use zerocopy::little_endian::U32 as U32LE;
 
 mod p {
     pub trait TargetSlicePriv<'a> {
@@ -72,8 +67,7 @@ macro_rules! count_relocations {
 }
 macro_rules! impl_command_sequence {
     ($(($C:ident, $idx:tt)),+) => {
-        impl<CL: Client, $($C: Command<CL>),+> sealed::Sealed<CL> for ($($C),+,) {}
-        unsafe impl<CL: Client, $($C: Command<CL>),+> CommandSequence<CL> for ($($C),+,) {
+        unsafe impl<CL: Client, $($C: CommandSequence<CL>),+> CommandSequence<CL> for ($($C),+,) {
             const N_WORDS: usize = count_words!($($C),+);
             const N_RELOCS: usize = count_relocations!($($C),+);
 
@@ -83,21 +77,63 @@ macro_rules! impl_command_sequence {
 
                 let mut off = 0;
                 $(
-                    let words = self.$idx.words();
-                    debug_assert_eq!($C::N_WORDS, words.len());
+                    let mut words = self.$idx.words();
+                    let words_len = words.len();
+                    debug_assert_eq!($C::N_WORDS, words_len);
                     for i in 0..words.len() {
                         // Safety:
                         // - Command trait unsafe, implementors must ensure it Command::words returns proper number of elements.
                         // - dest has been checked for correct length above
-                        unsafe { *uninit.get_unchecked_mut(off + i) = MaybeUninit::new(words.get_unchecked(i).get().to_le()); }
+                        unsafe { *uninit.get_unchecked_mut(off + i) = MaybeUninit::new(words.next().unwrap_unchecked().get().to_le()); }
                     }
-                    off += words.len();
+                    off += words_len;
                 )+
 
                 debug_assert_eq!(off, Self::N_WORDS);
 
                 // Safety: entire array has been initialized above.
                 Ok(unsafe { ValidRawCommandArray::assume_valid(dest.assume_init_u32_slice(Self::N_WORDS)) })
+            }
+
+            fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
+                // All the iterators we are chaining already are ExactSizeIterator
+                // and we already know the exact number of elements each iterator will return.
+                struct ExactSize<I> {
+                    it: I,
+                    size: usize
+                }
+                impl<I: Iterator> Iterator for ExactSize<I> {
+                    type Item = I::Item;
+
+                    fn next(&mut self) -> Option<Self::Item> {
+                        let item = self.it.next()?;
+                        self.size -= 1;
+                        Some(item)
+                    }
+
+                    fn size_hint(&self) -> (usize, Option<usize>) {
+                        (self.size, Some(self.size))
+                    }
+                }
+                impl<I: Iterator> ExactSizeIterator for ExactSize<I> {
+                    fn len(&self) -> usize {
+                        self.size
+                    }
+                }
+                impl<I: FusedIterator> FusedIterator for ExactSize<I> {}
+
+                ExactSize {
+                    it: [].into_iter()
+                        $(
+                            .chain({
+                                let words = self.$idx.words();
+                                debug_assert_eq!($C::N_WORDS, words.len());
+                                words
+                            })
+                        )+
+                    ,
+                    size: <Self as CommandSequence<CL>>::N_WORDS,
+                }
             }
 
             fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation> {
@@ -151,11 +187,13 @@ macro_rules! impl_command_sequence {
     };
 }
 
-/// A sequence of Host1x commands.
+/// A sequence of one or more valid Host1x commands.
 ///
 /// # Safety
-/// - [`CommandSequence::relocs`] must return exactly [`CommandSequence::N_RELOCS`] elements
-pub unsafe trait CommandSequence<C: Client>: sealed::Sealed<C> {
+/// - [`CommandSequence::words`] must return exactly [`CommandSequence::N_WORDS`] elements.
+/// - [`CommandSequence::relocs`] must return exactly [`CommandSequence::N_RELOCS`] elements.
+/// - [`CommandSequence::try_write_to_slice`] must write exactly the same words that [`CommandSequence::words`] returns.
+pub unsafe trait CommandSequence<C: Client> {
     /// Total number of words for entire command stream.
     const N_WORDS: usize;
 
@@ -164,8 +202,36 @@ pub unsafe trait CommandSequence<C: Client>: sealed::Sealed<C> {
 
     fn try_write_to_slice<'target>(
         &self,
-        dest: impl TargetSlice<'target>,
-    ) -> Result<ValidRawCommandArray<'target>, BufferTooSmallError>;
+        mut dest: impl TargetSlice<'target>,
+    ) -> Result<ValidRawCommandArray<'target>, BufferTooSmallError> {
+        let uninit = dest.as_uninit_u32_slice_mut();
+        ensure!(
+            uninit.len() >= Self::N_WORDS,
+            BufferTooSmallSnafu {
+                needed: NonZeroUsize::new(Self::N_WORDS - uninit.len()).unwrap()
+            }
+        );
+
+        let mut words = self.words();
+        let words_len = words.len();
+        debug_assert_eq!(Self::N_WORDS, words_len);
+        for i in 0..words.len() {
+            // Safety:
+            // - Command trait unsafe, implementors must ensure it Command::words returns proper number of elements.
+            // - dest has been checked for correct length above
+            unsafe {
+                *uninit.get_unchecked_mut(i) =
+                    MaybeUninit::new(words.next().unwrap_unchecked().get().to_le());
+            }
+        }
+
+        // Safety: entire array has been initialized above.
+        Ok(
+            unsafe {
+                ValidRawCommandArray::assume_valid(dest.assume_init_u32_slice(Self::N_WORDS))
+            },
+        )
+    }
 
     fn write_to_slice<'target>(
         &self,
@@ -175,6 +241,10 @@ pub unsafe trait CommandSequence<C: Client>: sealed::Sealed<C> {
             .expect("target slice is too small")
     }
 
+    /// Return an iterator of raw 32-bit words as understood by the HOST1X interface.
+    fn words(&self) -> impl ExactSizeIterator<Item = U32LE>;
+
+    /// High-level description of relocations to be performed prior to command submission.
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation>;
 }
 // This is extremely slow to compile. With impl's for up to 8 commands (which is
@@ -317,7 +387,7 @@ mod tests {
     fn test_cmd_seq() {
         let mut dest = const { [MaybeUninit::uninit(); 3] };
         assert_eq!(
-            (SetClass::<_, _, Gr2d, _>::new(),)
+            SetClass::<_, _, Gr2d, _>::new()
                 .try_write_to_slice(&mut dest[..])
                 .map(ValidRawCommandArray::into_inner),
             Ok(&[0x1440][..])
