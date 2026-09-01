@@ -2,6 +2,6 @@
 
 use arbitrary_int::u10;
 
-pub trait Client {
+pub trait Client: 'static {
     const CLASS: u10;
 }
