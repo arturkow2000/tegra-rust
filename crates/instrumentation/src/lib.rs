@@ -16,6 +16,14 @@ pub trait ToTracy {
 }
 impl ToTracy for colorspace::Rgba8888 {
     fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B) {
+        client.frame_mark();
+        client.frame_image(
+            buf.as_ref(),
+            buf.width().try_into().unwrap(),
+            buf.height().try_into().unwrap(),
+            1,
+            false,
+        );
     }
 }
 impl ToTracy for colorspace::Bgra8888 {
@@ -26,23 +34,43 @@ impl ToTracy for colorspace::Bgra8888 {
         let mut dst = vec![0u8; buf.height() as usize * dst_stride];
 
         let planes = [(buf.stride(), buf.as_ref())];
+        let mut dst_planes = [(dst_stride as u32, dst.as_mut())];
+
         for y in 0..buf.height() {
             for x in 0..buf.width() {
-                let pixel = Self::get_pixel(
+                let Some(pixel) = Self::get_pixel(
                     x,
                     y,
                     &planes,
                     <<B::Format as Format>::Encoding as Encoding>::BPP,
-                )
-                .unwrap();
+                ) else {
+                    error!("can't get pixel {x} {y}");
+                    unreachable!()
+                };
+                colorspace::Rgba8888::set_pixel(
+                    x,
+                    y,
+                    &mut dst_planes,
+                    <<B::Format as Format>::Encoding as Encoding>::BPP,
+                    pixel,
+                );
             }
         }
-        todo!()
+
+        client.frame_mark();
+        client.frame_image(
+            dst.as_ref(),
+            buf.width().try_into().unwrap(),
+            buf.height().try_into().unwrap(),
+            1,
+            false,
+        );
     }
 }
 
 pub struct TracingContext {
     tracy: tracy_client::Client,
+    #[allow(dead_code)]
     gr2d: tracy_client::GpuContext,
 }
 
@@ -51,25 +79,7 @@ impl TracingContext {
     where
         B::Format: ToTracy,
     {
-        /*let mut dst = vec![0u8; buf.size() as usize];
-        for row in 0..buf.height() {
-            let offset = row as usize * buf.stride() as usize;
-            let pixels = &buf.as_ref()[offset
-                ..offset
-                    + buf.width() as usize
-                        * <<B::Format as Format>::Encoding as Encoding>::BPP.as_u8() as usize
-                        / 4];
-        }
-
-        // FIXME: need to handle format conversion image scaling
-        self.tracy.frame_mark();
-        self.tracy.frame_image(
-            buf.as_ref(),
-            buf.width().try_into().unwrap(),
-            buf.height().try_into().unwrap(),
-            1,
-            false,
-        );*/
+        B::Format::upload(&self.tracy, buf);
     }
 }
 
