@@ -14,3 +14,4 @@ instrumentation.path = "../instrumentation"
 tracing.workspace = true
 colorspace.path = "../colorspace"
 embedded-graphics.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

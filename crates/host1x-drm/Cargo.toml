@@ -10,6 +10,10 @@ rustix = { workspace = true, features = ["fs", "mm", "time"] }
 snafu = { workspace = true, features = ["std"] }
 bitflags.workspace = true
 tracing.workspace = true
+pin-project.workspace = true
+futures-util.workspace = true
+tokio.workspace = true
+getset.workspace = true
 host1x-core.path = "../host1x-core"
 host1x-buffer.path = "../host1x-buffer"
 host1x-client.path = "../host1x-client"

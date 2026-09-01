@@ -18,6 +18,7 @@ drm = "0.15"
 drm-ffi = "0.9"
 drm-fourcc = "2"
 pin-project = "1"
+futures-util = "0.3"
 tokio = "1"
 tokio-util = "0.7"
 futures = { version = "0.3", default-features = false }

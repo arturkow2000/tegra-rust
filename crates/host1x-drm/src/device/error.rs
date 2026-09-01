@@ -13,6 +13,9 @@ pub enum Error {
     #[snafu(display("not Tegra DRM device"))]
     NotTegraDev,
 
+    #[snafu(display("DRM syncobj is not supported"))]
+    SyncobjNotSupported,
+
     #[snafu(display("unknown I/O error"))]
     IOError { source: io::Error },
 }

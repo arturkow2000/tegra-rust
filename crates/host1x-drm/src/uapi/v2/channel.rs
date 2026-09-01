@@ -3,15 +3,15 @@ use std::{
     marker::PhantomData,
     mem::MaybeUninit,
     os::fd::{AsFd, AsRawFd},
-    time::Duration,
 };
 
-use host1x_core::{cmdseq::CommandSequence, pushbuf::PushBuffer};
+use host1x_core::cmdseq::CommandSequence;
 use tracing::field;
 
 use crate::{
     buffer::BufferType,
     device::TegraDRM,
+    fence::Syncobj,
     mapping::{MappingMode, ReadWrite},
     uapi::{
         v1::buffer::GenericBuffer,
@@ -56,6 +56,14 @@ impl<C: host1x_client::Client> Channel<C> {
     }
 }
 impl<C: host1x_client::Client> Channel<C> {
+    // FIXME: now that we support async API this is unsound.
+    // User may submit task to the GPU, the he/she may drop the future, remove GPU mapping (this doesn't necessarily
+    // cut buffer access from GPU, kernel may still hold the mapping, also, not all GPUs have GARTs, so mapping is mostly a no-op then),
+    // recover underlying buffer and access it while it's still written by the GPU.
+    //
+    // This needs to be reworked to take buffer by value. Queue APIs are already properly designed, they take buffers by value, wrap them in Task,
+    // submitting Task transfers buffer ownership to the GPU, requiring proper synchronization to recover that ownership (similar to how Rust's
+    // async APIs work in general, we don't transmit references between threads, we transfer values, and get them back later).
     pub fn map_buffer<'a, CMM: MappingMode, T: BufferType>(
         &'a self,
         buffer: &'a mut GenericBuffer<CMM, T>,
@@ -63,15 +71,16 @@ impl<C: host1x_client::Client> Channel<C> {
         BufferMapping::new(self, buffer)
     }
 
-    pub unsafe fn exec_pushbuf_blocking(
+    pub(crate) fn submit(
         &self,
-        buf: &PushBuffer<C>,
+        seq: impl CommandSequence<C>,
         sp: &SyncPoint,
-    ) -> io::Result<()> {
+        syncobj_in: Option<&mut Syncobj>,
+        syncobj_out: Option<&mut Syncobj>,
+    ) -> io::Result<u32> {
         // FIXME: need to unify relocations definition between host1x-drm, host1x-nvhost and host1x-core.
-        let relocs: Vec<_> = buf
+        let relocs: Vec<_> = seq
             .relocs()
-            .iter()
             .map(|r| ioctl::drm_tegra_submit_buf {
                 mapping: r.mapping,
                 flags: 0,
@@ -80,38 +89,25 @@ impl<C: host1x_client::Client> Channel<C> {
                 reloc_shift: r.shift,
             })
             .collect();
-        let syncpt_after_job_completion = unsafe {
-            ioctl::channel_submit(&self.dev, self.context, sp.id(), 1, buf.cmdbuf(), &relocs)?
-        };
-        let _r = sp.wait(syncpt_after_job_completion, Duration::from_secs(1))?;
-        Ok(())
-    }
-
-    pub unsafe fn exec_blocking<B: CommandSequence<C>>(
-        self,
-        cmdseq: B,
-        sp: SyncPoint,
-    ) -> io::Result<()> {
         // TODO: https://github.com/rust-lang/rust/issues/76560 would allow to allocate buf and relocs on the stack.
         // in fact that compiles even now with `#![feature(generic_const_exprs)]`, but it's marked as incomplete and I want
         // to avoid using things which are likely to introduce unsoundness into safe code.
-        let mut buf = vec![MaybeUninit::uninit(); B::N_WORDS];
-        let relocs: Vec<_> = cmdseq
-            .relocs()
-            .map(|r| ioctl::drm_tegra_submit_buf {
-                mapping: r.mapping,
-                flags: 0,
-                reloc_target_offset: r.buf_offset,
-                reloc_gather_offset_words: r.patch_offset,
-                reloc_shift: r.shift,
-            })
-            .collect();
+        let mut buf = vec![MaybeUninit::uninit(); seq.words().len()];
+        let buf = seq.write_to_slice(&mut buf[..]);
 
-        let buf = cmdseq.write_to_slice(&mut buf[..]);
-        let syncpt_after_job_completion =
-            unsafe { ioctl::channel_submit(&self.dev, self.context, sp.id(), 1, buf, &relocs)? };
-        let _r = sp.wait(syncpt_after_job_completion, Duration::from_secs(1))?;
-        Ok(())
+        let fence = unsafe {
+            ioctl::channel_submit(
+                &self.dev,
+                self.context,
+                sp.id(),
+                1,
+                buf,
+                &relocs,
+                syncobj_in.map(|sobj| sobj.handle()),
+                syncobj_out.map(|sobj| sobj.handle()),
+            )?
+        };
+        Ok(fence)
     }
 }
 impl<C: host1x_client::Client> Drop for Channel<C> {

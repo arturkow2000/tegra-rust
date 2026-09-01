@@ -1,6 +1,7 @@
 use std::io;
 
 use bitflags::bitflags;
+use drm::control::syncobj;
 use drm_ffi::{DRM_COMMAND_BASE, DRM_IOCTL_BASE};
 use host1x_core::cmdseq::ValidRawCommandArray;
 use rustix::ioctl::{self, Opcode};
@@ -342,6 +343,8 @@ pub unsafe fn channel_submit(
     sp_increments: u32,
     buf: ValidRawCommandArray<'_>,
     relocs: &[drm_tegra_submit_buf],
+    syncobj_in: Option<syncobj::Handle>,
+    syncobj_out: Option<syncobj::Handle>,
 ) -> io::Result<u32> {
     let words = buf.len().try_into().unwrap();
     debug_assert!(words != 0, "attempt to submit empty command buffer");
@@ -364,8 +367,8 @@ pub unsafe fn channel_submit(
         bufs_ptr: relocs.as_ptr() as _,
         cmds_ptr: cmds.as_ptr() as _,
         gather_data_ptr: buf.as_ptr() as _,
-        syncobj_in: 0,
-        syncobj_out: 0,
+        syncobj_in: syncobj_in.map_or(0, u32::from),
+        syncobj_out: syncobj_out.map_or(0, u32::from),
         syncpt: drm_tegra_submit_syncpt {
             id: sp_id,
             flags: 0,

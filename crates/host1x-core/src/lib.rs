@@ -6,4 +6,5 @@
 pub mod cmd;
 pub mod cmdseq;
 pub use host1x_reg as reg;
-pub mod pushbuf;
+pub mod queue;
+pub mod task;
