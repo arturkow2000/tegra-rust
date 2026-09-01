@@ -33,3 +33,4 @@ impl AsFd for AnyDevice {
 }
 
 impl drm::Device for AnyDevice {}
+impl drm::control::Device for AnyDevice {}

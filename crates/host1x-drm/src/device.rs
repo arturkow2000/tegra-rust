@@ -10,7 +10,7 @@ use rustix::fs::{Mode, OFlags};
 use snafu::{ResultExt as _, ensure};
 use tracing::{Span, field};
 
-use self::error::{IOSnafu, NotTegraDevSnafu, Result};
+use self::error::{IOSnafu, NotTegraDevSnafu, Result, SyncobjNotSupportedSnafu};
 
 mod any;
 mod error;
@@ -37,9 +37,13 @@ impl TegraDRM {
         // Ensure the device is driven by Linux `tegra` driver.
         // This check is critical and large portion of this crate depends on this to
         // provide safe APIs.
-        //
-        // Without this check we may not implement Device trait.
         ensure!(driver.name() == "tegra", NotTegraDevSnafu);
+        ensure!(
+            dev.get_driver_capability(drm::DriverCapability::SyncObj)
+                .unwrap_or(0)
+                != 0,
+            SyncobjNotSupportedSnafu
+        );
         Ok(Self {
             imp: Arc::new(TegraDRMImpl { dev }),
         })
@@ -68,3 +72,4 @@ impl AsFd for TegraDRM {
 }
 
 impl drm::Device for TegraDRM {}
+impl drm::control::Device for TegraDRM {}
