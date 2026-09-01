@@ -36,7 +36,7 @@ impl BitsPerPixel {
 
 /// Pixel encoding, defines what channels form color of a pixel and bitsize of each channel value.
 pub trait Encoding: sealed::SealedEncoding {
-    type Storage;
+    type Storage: Copy;
     const BPP: BitsPerPixel;
 
     const BLACK: Color<Self>;

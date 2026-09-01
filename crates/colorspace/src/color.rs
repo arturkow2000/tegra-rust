@@ -44,6 +44,16 @@ impl<E: Rgb> Color<E> {
     }
 }
 
+impl<E: Encoding + ?Sized> Clone for Color<E>
+where
+    E::Storage: Clone,
+{
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+impl<E: Encoding + ?Sized> Copy for Color<E> where E::Storage: Copy {}
+
 impl<E: RgbAlpha> Color<E> {
     // TODO: make this const
     // we need https://github.com/rust-lang/rust/issues/143874
