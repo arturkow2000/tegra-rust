@@ -19,8 +19,6 @@ use host1x_drm::{
     },
 };
 
-mod queue;
-
 #[tokio::main]
 async fn main() {
     let _guard = instrumentation::init();
