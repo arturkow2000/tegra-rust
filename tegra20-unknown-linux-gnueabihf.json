@@ -6,7 +6,7 @@
   "default-uwtable": true,
   "dynamic-linking": true,
   "env": "gnu",
-  "features": "+v7,+vfp3d16,+thumb2,-neon,-d32",
+  "features": "+v7,+vfp3d16,+thumb2,-neon,-d32,+thumb-mode",
   "has-rpath": true,
   "has-thread-local": true,
   "link-self-contained": {

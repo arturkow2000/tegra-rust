@@ -2,7 +2,12 @@
     "git.autoRepositoryDetection": true,
     "git.openRepositoryInParentFolders": "always",
     "rust-analyzer.cargo.target": "armv7-unknown-linux-gnueabihf",
+    "rust-analyzer.cargo.targetDir": true,
     "rust-analyzer.cargo.extraArgs": [
         "-Zbuild-std"
-    ]
+    ],
+    "rust-analyzer.cargo.buildScripts.enable": true,
+    "rust-analyzer.cargo.buildScripts.useRustcWrapper": true,
+    "rust-analyzer.cargo.buildScripts.rebuildOnSave": true,
+    "rust-analyzer.cargo.allTargets": true,
 }

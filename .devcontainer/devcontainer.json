@@ -1,0 +1,19 @@
+{
+    "name": "Tegra Rust",
+    "image": "tegra-rust:latest",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "rust-lang.rust-analyzer",
+                "tamasfe.even-better-toml"
+            ],
+            "settings": {
+                "rust-analyzer.server.path": "rust-analyzer",
+                "rust-analyzer.cargo.configPath": null,
+                "rust-analyzer.rustfmt.overrideCommand": null
+            }
+        }
+    },
+    // Workaround for https://github.com/arturkow2000/nix-devcontainer/issues/1
+    "updateRemoteUserUID": false
+}
