@@ -6,3 +6,9 @@ runner = ".vscode/remote-run.sh"
 
 [target.armv7-unknown-linux-gnueabihf]
 runner = ".vscode/remote-run.sh"
+
+[target.tegra20-unknown-linux-musleabihf]
+runner = ".vscode/remote-run.sh"
+
+[target.tegra20-unknown-linux-gnueabihf]
+runner = ".vscode/remote-run.sh"
