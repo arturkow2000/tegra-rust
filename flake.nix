@@ -181,6 +181,31 @@
                 wrap "$app"
               done < <(cd ${cc}/bin; find -mindepth 1 -maxdepth 1 ! -type d -print0)
             '';
+          mkCrossClangToolchain =
+            { cc }:
+            let
+              bintools =
+                (cc.bintools.override {
+                  # overriding sharedLibraryLoader does not work as expected.
+                  # build script checks for path presence and won't
+                  # set nix-support/dynamic-linker if linker is absent during build.
+                }).overrideAttrs
+                  (
+                    self: super: {
+                      # Strip out nix store path. This, together with NIX_DONT_SET_RPATH
+                      # allow built binaries to run on target without Nix store.
+                      postFixup = (super.postFixup or "") + ''
+                        dyld="$(basename "$(cat $out/nix-support/dynamic-linker)")"
+                        echo "/usr/lib/$dyld" > $out/nix-support/dynamic-linker
+                      '';
+                    }
+                  );
+            in
+            mkL2ClangWrapper {
+              cc = cc.override {
+                inherit bintools;
+              };
+            };
 
           env = mkEnv pkgsMusl.stdenv // lib.optionalAttrs includeGlibc (mkEnv pkgsGlibc.stdenv);
           # For rust build scripts.
@@ -191,12 +216,12 @@
           nativeBuildInputs = [
             pkgsMusl.pkgsBuildBuild.openssh
             rustMusl
-            (mkL2ClangWrapper { inherit (pkgsMusl.stdenv) cc; })
+            (mkCrossClangToolchain { inherit (pkgsMusl.stdenv) cc; })
           ]
           ++ lib.optional includeGlibc rustGlibc
           # When using clang this will be just another wrapper around same compiler.
           # In case of GCC those will be 2 distinct compilers.
-          ++ lib.optional includeGlibc (mkL2ClangWrapper {
+          ++ lib.optional includeGlibc (mkCrossClangToolchain {
             inherit (pkgsGlibc.stdenv) cc;
           });
         in
@@ -220,6 +245,9 @@
               # TODO: why this happens?
               # Fix this in nix-devcontainer.
               NIX_ENFORCE_PURITY = 0;
+              # Built binaries will run in non-NixOS environment, we are using
+              # Nix only to cross-compile for target environment (currently based on yocto).
+              NIX_DONT_SET_RPATH_FOR_TARGET = 1;
             };
             defaultShell = "fish";
             enabledShells = [
