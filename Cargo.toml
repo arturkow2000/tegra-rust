@@ -3,7 +3,7 @@ resolver = "3"
 members = [
     "crates/basic-test",
     "crates/colorspace",
-    "crates/gr2d",
+    "crates/gr2d", "crates/gr2d-drm-demo",
     "crates/gr2d-reg",
     "crates/host1x-buffer",
     "crates/host1x-client",

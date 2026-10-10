@@ -58,7 +58,7 @@ impl TegraDRM {
         let span = Span::current();
         span.record("path", field::display(path.display()));
 
-        let fd = rustix::fs::open(path, OFlags::RDWR, Mode::empty())
+        let fd = rustix::fs::open(path, OFlags::RDWR | OFlags::NONBLOCK, Mode::empty())
             .map_err(Into::into)
             .context(IOSnafu)?;
         Self::try_from_fd(fd)

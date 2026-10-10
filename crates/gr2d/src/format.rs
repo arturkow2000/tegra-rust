@@ -11,6 +11,12 @@ impl Gr2dFormat for colorspace::Rgba8888 {
     const DIFMT: FieldValue<u32, SBFMT0::Register> = DIFMT::RGBA8888;
 }
 
+// FIXME: this is invalid, for now used only to get code to compile.
+impl Gr2dFormat for colorspace::Argb8888 {
+    const SIFMT: FieldValue<u32, SBFMT0::Register> = SIFMT::RGBA8888;
+    const DIFMT: FieldValue<u32, SBFMT0::Register> = DIFMT::RGBA8888;
+}
+
 impl Gr2dFormat for colorspace::Bgra8888 {
     const SIFMT: FieldValue<u32, SBFMT0::Register> = SIFMT::BGRA8888;
     const DIFMT: FieldValue<u32, SBFMT0::Register> = DIFMT::BGRA8888;

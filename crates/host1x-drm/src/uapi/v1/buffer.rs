@@ -182,6 +182,23 @@ impl<MM: MappingMode, F: Format> host1x_buffer::PixelBuffer for GenericBuffer<MM
         self.size.get() / self.typ_dat.height.get()
     }
 }
+impl<MM: MappingMode, F: Format> drm::buffer::Buffer for GenericBuffer<MM, PixelBuffer<F>> {
+    fn size(&self) -> (u32, u32) {
+        (self.typ_dat.width.get(), self.typ_dat.height.get())
+    }
+
+    fn format(&self) -> drm::buffer::DrmFourcc {
+        F::DRM_FCC
+    }
+
+    fn pitch(&self) -> u32 {
+        self.size.get() / self.typ_dat.height.get()
+    }
+
+    fn handle(&self) -> drm::buffer::Handle {
+        NonZeroU32::new(self.handle).unwrap().into()
+    }
+}
 impl<MM: MappingMode, T: BufferType> Drop for GenericBuffer<MM, T> {
     fn drop(&mut self) {
         let span = debug_span!(

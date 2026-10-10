@@ -1,0 +1,21 @@
+[package]
+name = "gr2d-drm-demo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+host1x-core.path = "../host1x-core"
+host1x-drm.path = "../host1x-drm"
+host1x-buffer.path = "../host1x-buffer"
+host1x-client.path = "../host1x-client"
+gr2d-reg.path = "../gr2d-reg"
+gr2d.path = "../gr2d"
+instrumentation.path = "../instrumentation"
+tracing.workspace = true
+colorspace.path = "../colorspace"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+drm.workspace = true
+embedded-graphics.workspace = true
+arbitrary-int.workspace = true
+futures-util.workspace = true
+pin-project.workspace = true
