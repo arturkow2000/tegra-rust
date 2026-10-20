@@ -56,17 +56,9 @@ impl<C: host1x_client::Client> Channel<C> {
     }
 }
 impl<C: host1x_client::Client> Channel<C> {
-    // FIXME: now that we support async API this is unsound.
-    // User may submit task to the GPU, the he/she may drop the future, remove GPU mapping (this doesn't necessarily
-    // cut buffer access from GPU, kernel may still hold the mapping, also, not all GPUs have GARTs, so mapping is mostly a no-op then),
-    // recover underlying buffer and access it while it's still written by the GPU.
-    //
-    // This needs to be reworked to take buffer by value. Queue APIs are already properly designed, they take buffers by value, wrap them in Task,
-    // submitting Task transfers buffer ownership to the GPU, requiring proper synchronization to recover that ownership (similar to how Rust's
-    // async APIs work in general, we don't transmit references between threads, we transfer values, and get them back later).
     pub fn map_buffer<'a, CMM: MappingMode, T: BufferType>(
         &'a self,
-        buffer: &'a mut GenericBuffer<CMM, T>,
+        buffer: GenericBuffer<CMM, T>,
     ) -> io::Result<BufferMapping<'a, C, T, CMM, ReadWrite>> {
         BufferMapping::new(self, buffer)
     }

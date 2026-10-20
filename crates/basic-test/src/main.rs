@@ -25,7 +25,7 @@ async fn main() {
     info!("doing some GR2D tests");
 
     let gpu = TegraDRM::open("/dev/dri/card1").unwrap();
-    let mut buf = Buffer::<PixelBuffer<Bgra8888>>::new(
+    let buf = Buffer::<PixelBuffer<Bgra8888>>::new(
         &gpu,
         NonZeroU32::new(256).unwrap(),
         NonZeroU32::new(256).unwrap(),
@@ -36,7 +36,7 @@ async fn main() {
 
     let sync = SyncPoint::alloc(&gpu).unwrap();
     let queue: Queue<gr2d_reg::Client> = Queue::new(Channel::new(&gpu).unwrap(), sync);
-    let mapping = queue.channel().map_buffer(&mut buf).unwrap();
+    let mapping = queue.channel().map_buffer(buf).unwrap();
 
     info!("before: {:x?}", &mapping[0..4]);
 

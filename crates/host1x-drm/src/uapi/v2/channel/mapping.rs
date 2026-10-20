@@ -19,16 +19,13 @@ use host1x_buffer::{Buffer, MappedBuffer, PixelBuffer, ReadableBuffer, WritableB
 pub struct BufferMapping<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
 {
     channel: &'a Channel<C>,
-    buffer: &'a mut GenericBuffer<CMM, T>,
+    buffer: ManuallyDrop<GenericBuffer<CMM, T>>,
     mapping_id: ManuallyDrop<MM::Handle<u32>>,
 }
 impl<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
     BufferMapping<'a, C, T, CMM, MM>
 {
-    pub(super) fn new(
-        channel: &'a Channel<C>,
-        buffer: &'a mut GenericBuffer<CMM, T>,
-    ) -> io::Result<Self> {
+    pub(super) fn new(channel: &'a Channel<C>, buffer: GenericBuffer<CMM, T>) -> io::Result<Self> {
         // Must be enforced, GEM handles are local to DRM fd, and may trigger UB
         // when handles created from different device instances are mixed up.
         assert_eq!(
@@ -41,7 +38,7 @@ impl<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
         }) {
             Ok(mapping_id) => Ok(Self {
                 channel,
-                buffer,
+                buffer: ManuallyDrop::new(buffer),
                 mapping_id: ManuallyDrop::new(mapping_id),
             }),
             Err(error) => Err(error),
@@ -49,11 +46,23 @@ impl<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
     }
 
     pub fn buffer(&self) -> &GenericBuffer<CMM, T> {
-        self.buffer
+        &self.buffer
     }
 
     pub fn buffer_mut(&mut self) -> &mut GenericBuffer<CMM, T> {
-        self.buffer
+        &mut self.buffer
+    }
+
+    /// Unmap buffer from the channel.
+    pub fn unmap(self) -> io::Result<GenericBuffer<CMM, T>> {
+        let mut this = ManuallyDrop::new(self);
+        // Safety: self is wrapped in ManuallyDrop to prevent destructor from running.
+        let mapping_id = unsafe { MM::get_handle(ManuallyDrop::take(&mut this.mapping_id)) };
+        let buffer = unsafe { ManuallyDrop::take(&mut this.buffer) };
+        let channel = this.channel;
+
+        ioctl::channel_unmap(&channel.dev, channel.context, mapping_id)?;
+        Ok(buffer)
     }
 }
 impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Drop
@@ -76,14 +85,14 @@ impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Dere
     type Target = GenericBuffer<CMM, T>;
 
     fn deref(&self) -> &Self::Target {
-        self.buffer
+        &self.buffer
     }
 }
 impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> DerefMut
     for BufferMapping<'_, C, T, CMM, MM>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.buffer
+        &mut self.buffer
     }
 }
 impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Buffer
