@@ -34,7 +34,6 @@ pub struct GenericBuffer<MM: MappingMode, T: BufferType> {
     ptr: ManuallyDrop<MM::Handle<NonNull<u8>>>,
     /// Type-specific additional data
     typ_dat: T,
-    mappings: [u32; 2],
 }
 impl<MM: MappingMode, F: Format> GenericBuffer<MM, PixelBuffer<F>> {
     // TODO: maybe make this private? Then buffers would be created through PixelBuffer, CommandBuffer,
@@ -81,7 +80,6 @@ impl<MM: MappingMode, F: Format> GenericBuffer<MM, PixelBuffer<F>> {
                 height,
                 _format: PhantomData,
             },
-            mappings: [0; _],
         })
     }
 }
@@ -97,7 +95,6 @@ impl<T: BufferType> GenericBuffer<Unmapped, T> {
                     size: this.size,
                     ptr: ManuallyDrop::new(ptr),
                     typ_dat: this.typ_dat,
-                    mappings: this.mappings,
                 })
             }
             Err(error) => Err((error, self)),
@@ -115,7 +112,6 @@ impl<T: BufferType> GenericBuffer<Unmapped, T> {
                     size: this.size,
                     ptr: ManuallyDrop::new(ptr),
                     typ_dat: this.typ_dat,
-                    mappings: this.mappings,
                 })
             }
             Err(error) => Err((error, self)),
