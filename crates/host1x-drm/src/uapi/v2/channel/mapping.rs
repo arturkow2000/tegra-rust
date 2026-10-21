@@ -7,13 +7,16 @@ use std::{
 
 use crate::{
     buffer::BufferType,
-    mapping::{Mapped, MappingMode, Readable, Writable},
+    mapping::{Mapped, MappingMode},
     uapi::{v1::buffer::GenericBuffer, v2::ioctl},
 };
 
 use super::Channel;
 use colorspace::Format;
-use host1x_buffer::{Buffer, MappedBuffer, PixelBuffer, ReadableBuffer, WritableBuffer};
+use host1x_buffer::{
+    Buffer, MappedBuffer, PixelBuffer, ReadableBuffer, WritableBuffer,
+    access::{Readable, Writable},
+};
 
 #[derive(Debug)]
 pub struct BufferMapping<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
@@ -126,11 +129,11 @@ impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Mapp
         *MM::get_handle_ref(&self.mapping_id)
     }
 }
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Readable> ReadableBuffer<C>
-    for BufferMapping<'_, C, T, CMM, MM>
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped + Readable>
+    ReadableBuffer<C> for BufferMapping<'_, C, T, CMM, MM>
 {
 }
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Writable> WritableBuffer<C>
-    for BufferMapping<'_, C, T, CMM, MM>
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped + Writable>
+    WritableBuffer<C> for BufferMapping<'_, C, T, CMM, MM>
 {
 }
