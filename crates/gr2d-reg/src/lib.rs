@@ -344,7 +344,7 @@ impl_registers![
     ],
     pub SRCSIZE OFFSET(0x37) RELOCATABLE(false) [
         SRCHEIGHT OFFSET(16) NUMBITS(16) [],
-        SRCWIDTH OFFSET(16) NUMBITS(16) [],
+        SRCWIDTH OFFSET(0) NUMBITS(16) [],
     ],
     pub DSTSIZE OFFSET(0x38) RELOCATABLE(false) [
         DSTHEIGHT OFFSET(16) NUMBITS(16) [],
