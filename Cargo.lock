@@ -257,6 +257,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "generativity"
+version = "1.2.1"
+
+[[package]]
 name = "generator"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -334,7 +338,9 @@ name = "host1x-core"
 version = "0.1.0"
 dependencies = [
  "arbitrary-int",
+ "generativity",
  "gr2d-reg",
+ "host1x-buffer",
  "host1x-client",
  "host1x-reg",
  "snafu",

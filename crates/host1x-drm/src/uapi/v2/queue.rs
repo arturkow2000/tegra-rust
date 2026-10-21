@@ -6,7 +6,12 @@ use std::{
 
 use futures_util::FutureExt;
 use host1x_client::Client;
-use host1x_core::{cmd::WriteNoIncr, reg::class::INCR_SYNCPT, task::Task};
+use host1x_core::{
+    cmd::WriteNoIncr,
+    cmdseq::CommandSequence,
+    job::{Job, MappedTo},
+    reg::class::INCR_SYNCPT,
+};
 use pin_project::pin_project;
 
 use crate::fence::{Syncobj, SyncobjWait};
@@ -30,20 +35,24 @@ impl<C: Client> Queue<C> {
     }
 }
 impl<C: Client> host1x_core::queue::Queue<C> for Queue<C> {
-    type SubmitFuture<'p, T: Task<Client = C>> = Submit<'p, T>;
+    type Channel = Channel<C>;
+    type SubmitFuture<'p, B: MappedTo<Channel<C>>, S: CommandSequence<C>> = Submit<'p, C, B, S>;
     type SubmitError = io::Error;
     type TaskError = io::Error;
     type Fence = Syncobj;
-    type PendingTask<'p, T: Task<Client = C>> = Pending<'p, T>;
+    type PendingTask<'p, B> = Pending<'p, B>;
 
     #[inline(always)]
-    fn submit<'r, T: Task<Client = C>>(
+    fn submit<'r, B: MappedTo<Channel<C>>, S: CommandSequence<C>>(
         &'r self,
         fence: &'r mut Self::Fence,
-        task: T,
-    ) -> Self::SubmitFuture<'r, T> {
+        job: Job<'_, C, B, S>,
+    ) -> Self::SubmitFuture<'r, B, S> {
+        // Safety: commands are submitted only to self.channel, buffers are kept
+        // by Submit and then Pending, until the fence signals completion.
+        let (buffers, seq) = unsafe { job.into_parts(self.channel()) };
         Submit {
-            task_wait: Some((task, fence.wait())),
+            state: Some((buffers, seq, fence.wait())),
             channel: self.channel(),
             syncpoint: &self.syncpoint,
         }
@@ -52,23 +61,23 @@ impl<C: Client> host1x_core::queue::Queue<C> for Queue<C> {
 
 #[derive(Debug)]
 #[pin_project]
-pub struct Submit<'a, T: Task> {
-    channel: &'a Channel<T::Client>,
+pub struct Submit<'a, C: Client, B, S> {
+    channel: &'a Channel<C>,
     syncpoint: &'a SyncPoint,
-    task_wait: Option<(T, SyncobjWait<'a>)>,
+    state: Option<(B, S, SyncobjWait<'a>)>,
 }
-impl<'a, T: Task> Future for Submit<'a, T> {
-    type Output = io::Result<Pending<'a, T>>;
+impl<'a, C: Client, B, S: CommandSequence<C>> Future for Submit<'a, C, B, S> {
+    type Output = io::Result<Pending<'a, B>>;
 
     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         let proj = self.project();
 
         // FIXME: submit is blocking, we should do this from a blocking thread pool,
         // but currently CommandSequence (and many other types) are !Send.
-        let (mut task, mut wait) = proj.task_wait.take().unwrap();
+        let (buffers, seq, mut wait) = proj.state.take().unwrap();
         proj.channel.submit(
             (
-                task.cmdseq(),
+                seq,
                 WriteNoIncr::new([
                     INCR_SYNCPT::COND::OP_DONE + INCR_SYNCPT::INDX.val(proj.syncpoint.id())
                 ]),
@@ -79,7 +88,7 @@ impl<'a, T: Task> Future for Submit<'a, T> {
         )?;
 
         Poll::Ready(Ok(Pending {
-            task: Some(task),
+            buffers: Some(buffers),
             wait,
         }))
     }
@@ -87,16 +96,17 @@ impl<'a, T: Task> Future for Submit<'a, T> {
 
 #[derive(Debug)]
 #[pin_project]
-pub struct Pending<'a, T: Task> {
-    task: Option<T>,
+pub struct Pending<'a, B> {
+    buffers: Option<B>,
     wait: SyncobjWait<'a>,
 }
-impl<T: Task> host1x_core::queue::PendingTask<T, Syncobj, io::Error> for Pending<'_, T> {}
-impl<T: Task> Future for Pending<'_, T> {
-    type Output = io::Result<T::Buffers>;
+impl<B> host1x_core::queue::PendingTask<B, Syncobj, io::Error> for Pending<'_, B> {}
+impl<B> Future for Pending<'_, B> {
+    type Output = io::Result<B>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        ready!(self.wait.poll_unpin(cx))?;
-        Poll::Ready(Ok(self.task.take().unwrap().buffers()))
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let proj = self.project();
+        ready!(proj.wait.poll_unpin(cx))?;
+        Poll::Ready(Ok(proj.buffers.take().unwrap()))
     }
 }
