@@ -10,13 +10,14 @@ use std::{
 };
 
 use colorspace::{Encoding, Format};
+use host1x_buffer::access::{ReadOnly, ReadWrite, Readable};
 use rustix::mm::{MapFlags, mmap, munmap};
 use tracing::field;
 
 use crate::{
     buffer::{BufferType, PixelBuffer},
     device::TegraDRM,
-    mapping::{MappingMode, ReadOnly, ReadWrite, Readable, Unmapped},
+    mapping::{Mapped, MappingMode, Unmapped},
 };
 
 use super::ioctl;
@@ -120,7 +121,7 @@ impl<T: BufferType> GenericBuffer<Unmapped, T> {
 
     // TODO: support unmapping and remapping
 }
-impl<MM: Readable, T: BufferType> Deref for GenericBuffer<MM, T> {
+impl<MM: Mapped + Readable, T: BufferType> Deref for GenericBuffer<MM, T> {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
@@ -132,7 +133,7 @@ impl<T: BufferType> DerefMut for GenericBuffer<ReadWrite, T> {
         self.as_mut()
     }
 }
-impl<MM: Readable, T: BufferType> AsRef<[u8]> for GenericBuffer<MM, T> {
+impl<MM: Mapped + Readable, T: BufferType> AsRef<[u8]> for GenericBuffer<MM, T> {
     fn as_ref(&self) -> &[u8] {
         // Safety:
         // - constructor ensures self.ptr is valid
