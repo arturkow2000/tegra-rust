@@ -5,6 +5,7 @@ use std::{
     os::fd::{AsFd, AsRawFd},
 };
 
+use host1x_buffer::access::ReadWrite;
 use host1x_core::cmdseq::CommandSequence;
 use tracing::field;
 
@@ -12,7 +13,7 @@ use crate::{
     buffer::BufferType,
     device::TegraDRM,
     fence::Syncobj,
-    mapping::{MappingMode, ReadWrite},
+    mapping::MappingMode,
     uapi::{
         v1::buffer::GenericBuffer,
         v2::{channel::mapping::BufferMapping, syncpt::SyncPoint},
