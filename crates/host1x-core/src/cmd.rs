@@ -685,6 +685,15 @@ unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: WriteIncrArg
 /// Host1x NOINCR command.
 ///
 /// NOINCR allows to write up to 65535 32-bit words at a fixed offset.
+///
+/// Writing relocatable registers is not supported, and is rejected at compile
+/// time:
+///
+/// ```compile_fail,E0080
+/// # use host1x_core::cmd::WriteNoIncr;
+/// # use gr2d_reg::DSTBA;
+/// WriteNoIncr::new([unsafe { DSTBA::for_raw_mapping::<'static, gr2d_reg::Client>(1, 0, 0) }]);
+/// ```
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct WriteNoIncr<const N: usize, C: Client, Reg: Register<C>> {
@@ -703,7 +712,16 @@ impl<const N: usize, C: Client, Reg: Register<C>> WriteNoIncr<N, C, Reg> {
     };
 
     #[inline]
-    pub fn new(values: [impl RegisterValue<C, R = Reg>; N]) -> Self {
+    pub fn new<V: RegisterValue<C, R = Reg>>(values: [V; N]) -> Self {
+        // Relocations are not emitted, a relocatable value would end up as a
+        // null address.
+        const {
+            assert!(
+                !V::HAS_RELOCATION,
+                "WriteNoIncr doesn't support relocatable registers"
+            )
+        };
+
         let mut args = [U32LE::new(0); N];
 
         // FIXME: on little-endian should compile down to simple memory copy, why it doesn't?
@@ -725,7 +743,7 @@ unsafe impl<const N: usize, C: Client, Reg: Register<C>> CommandSequence<C>
     for WriteNoIncr<N, C, Reg>
 {
     const N_WORDS: usize = N + 1;
-    // FIXME: properly implement this
+    // Relocatable values are rejected by the constructor.
     const N_RELOCS: usize = 0;
 
     fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
@@ -738,8 +756,6 @@ unsafe impl<const N: usize, C: Client, Reg: Register<C>> CommandSequence<C>
     }
 
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation> {
-        //todo!();
-        //#[allow(unreachable_code)]
         [].into_iter()
     }
 }
