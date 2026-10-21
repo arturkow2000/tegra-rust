@@ -3,6 +3,7 @@ use std::{
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
     os::fd::{AsFd, AsRawFd},
+    ptr,
 };
 
 use crate::{
@@ -13,10 +14,8 @@ use crate::{
 
 use super::Channel;
 use colorspace::Format;
-use host1x_buffer::{
-    Buffer, MappedBuffer, PixelBuffer, ReadableBuffer, WritableBuffer,
-    access::{Readable, Writable},
-};
+use host1x_buffer::{Buffer, PixelBuffer, PixelLayout};
+use host1x_core::job::{Brand, Handle, Import, MappedTo};
 
 #[derive(Debug)]
 pub struct BufferMapping<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
@@ -46,6 +45,11 @@ impl<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
             }),
             Err(error) => Err(error),
         }
+    }
+
+    /// Opaque identifier of the mapping, valid within the channel.
+    pub fn mapping_id(&self) -> u32 {
+        *MM::get_handle_ref(&self.mapping_id)
     }
 
     pub fn buffer(&self) -> &GenericBuffer<CMM, T> {
@@ -122,18 +126,24 @@ impl<C: host1x_client::Client, CMM: MappingMode, MM: Mapped, F: Format> PixelBuf
         self.buffer.stride()
     }
 }
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> MappedBuffer<C>
-    for BufferMapping<'_, C, T, CMM, MM>
+// Safety:
+// - mapping lives as long as BufferMapping does.
+// - when moved into the job, CPU access is possible only through BufferMapping itself.
+unsafe impl<C: host1x_client::Client, CMM: MappingMode, MM: Mapped, F: Format> Import
+    for BufferMapping<'_, C, crate::buffer::PixelBuffer<F>, CMM, MM>
 {
-    fn mapping_id(&self) -> u32 {
-        *MM::get_handle_ref(&self.mapping_id)
+    type Handles<'id> = Handle<'id, C, PixelLayout<F>, MM>;
+
+    fn import<'id>(&self, brand: &Brand<'id>) -> Self::Handles<'id> {
+        // Safety: mapping is owned by self, layout is taken from the buffer itself.
+        unsafe { Handle::new(brand, self.mapping_id(), PixelLayout::of(self)) }
     }
 }
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped + Readable>
-    ReadableBuffer<C> for BufferMapping<'_, C, T, CMM, MM>
+// Safety: mapping has been created on self.channel.
+unsafe impl<C: host1x_client::Client, CMM: MappingMode, MM: Mapped, F: Format> MappedTo<Channel<C>>
+    for BufferMapping<'_, C, crate::buffer::PixelBuffer<F>, CMM, MM>
 {
-}
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped + Writable>
-    WritableBuffer<C> for BufferMapping<'_, C, T, CMM, MM>
-{
+    fn is_mapped_to(&self, channel: &Channel<C>) -> bool {
+        ptr::eq(self.channel, channel)
+    }
 }

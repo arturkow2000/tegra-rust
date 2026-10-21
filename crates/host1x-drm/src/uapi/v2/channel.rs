@@ -103,6 +103,9 @@ impl<C: host1x_client::Client> Channel<C> {
         Ok(fence)
     }
 }
+impl<C: host1x_client::Client> host1x_core::queue::Channel for Channel<C> {
+    type Client = C;
+}
 impl<C: host1x_client::Client> Drop for Channel<C> {
     fn drop(&mut self) {
         let span = debug_span!(

@@ -13,6 +13,8 @@ zerocopy.workspace = true
 host1x-reg.path = "../host1x-reg"
 host1x-client.path = "../host1x-client"
 snafu = { workspace = true, default-features = false }
+generativity.workspace = true
+host1x-buffer.path = "../host1x-buffer"
 # Actually needed only for tests and for documentation.
 # But as cargo currently has no [doc-dependencies] or any equivalent we cannot
 # specify cannot add dependencies for documentation.

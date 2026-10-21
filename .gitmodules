@@ -1,0 +1,3 @@
+[submodule "external/generativity"]
+	path = external/generativity
+	url = https://github.com/arturkow2000/generativity
