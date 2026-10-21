@@ -94,6 +94,8 @@ pub unsafe trait MaskArgs<C: Client> {
     fn values(&self) -> impl ExactSizeIterator<Item = u32>;
 
     /// High-level description of relocations to be performed prior to command submission.
+    ///
+    /// [`Relocation::patch_offset`] is relative to the first value.
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation>;
 }
 macro_rules! impl_mask_args {
@@ -141,7 +143,8 @@ macro_rules! impl_mask_args {
                 }
                 impl<I: FusedIterator<Item = Option<Relocation>>> FusedIterator for FilterExactSize<I> {}
                 FilterExactSize {
-                    it: [$(self.$idx.reloc()),+].into_iter(),
+                    // Value of the n-th register is located n words after the first value.
+                    it: [$(self.$idx.reloc().map(|mut r| { r.patch_offset += $idx; r })),+].into_iter(),
                     size: <Self as MaskArgs<C>>::N_RELOCS,
                 }
             }
@@ -191,6 +194,8 @@ pub unsafe trait SetCLArgs<C: Client> {
     fn values(&self) -> impl ExactSizeIterator<Item = u32>;
 
     /// High-level description of relocations to be performed prior to command submission.
+    ///
+    /// [`Relocation::patch_offset`] is relative to the first value.
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation>;
 }
 macro_rules! impl_setcl_args {
@@ -238,7 +243,8 @@ macro_rules! impl_setcl_args {
                 }
                 impl<I: FusedIterator<Item = Option<Relocation>>> FusedIterator for FilterExactSize<I> {}
                 FilterExactSize {
-                    it: [$(self.$idx.reloc()),+].into_iter(),
+                    // Value of the n-th register is located n words after the first value.
+                    it: [$(self.$idx.reloc().map(|mut r| { r.patch_offset += $idx; r })),+].into_iter(),
                     size: <Self as SetCLArgs<C>>::N_RELOCS,
                 }
             }
@@ -289,6 +295,8 @@ pub unsafe trait WriteIncrArgs<C: Client> {
     fn values(&self) -> impl ExactSizeIterator<Item = u32>;
 
     /// High-level description of relocations to be performed prior to command submission.
+    ///
+    /// [`Relocation::patch_offset`] is relative to the first value.
     fn relocs(&self) -> impl ExactSizeIterator<Item = Relocation>;
 }
 macro_rules! impl_write_incr_args {
@@ -350,7 +358,8 @@ macro_rules! impl_write_incr_args {
                 }
                 impl<I: FusedIterator<Item = Option<Relocation>>> FusedIterator for FilterExactSize<I> {}
                 FilterExactSize {
-                    it: [$(self.$idx.reloc()),+].into_iter(),
+                    // Value of the n-th register is located n words after the first value.
+                    it: [$(self.$idx.reloc().map(|mut r| { r.patch_offset += $idx; r })),+].into_iter(),
                     size: <Self as WriteIncrArgs<C>>::N_RELOCS,
                 }
             }
@@ -513,7 +522,8 @@ impl<const N: usize, const N_RELOCS: usize, C: Client, Args: SetCLArgs<C>>
             unsafe {
                 let old = old_relocs.next().unwrap_unchecked();
                 *relocs.get_unchecked_mut(i) = Relocation {
-                    patch_offset: old.patch_offset + i as u32 + 1,
+                    // Skip the opcode word.
+                    patch_offset: old.patch_offset + 1,
                     mapping: old.mapping,
                     buf_offset: old.buf_offset,
                     shift: old.shift,
@@ -634,7 +644,8 @@ impl<const N: usize, const N_RELOCS: usize, C: Client, Args: WriteIncrArgs<C>>
             unsafe {
                 let old = old_relocs.next().unwrap_unchecked();
                 *relocs.get_unchecked_mut(i) = Relocation {
-                    patch_offset: old.patch_offset + i as u32 + 1,
+                    // Skip the opcode word.
+                    patch_offset: old.patch_offset + 1,
                     mapping: old.mapping,
                     buf_offset: old.buf_offset,
                     shift: old.shift,
@@ -830,7 +841,8 @@ impl<const N: usize, const N_RELOCS: usize, C: Client, Args: MaskArgs<C>>
             unsafe {
                 let old = old_relocs.next().unwrap_unchecked();
                 *relocs.get_unchecked_mut(i) = Relocation {
-                    patch_offset: old.patch_offset + i as u32 + 1,
+                    // Skip the opcode word.
+                    patch_offset: old.patch_offset + 1,
                     mapping: old.mapping,
                     buf_offset: old.buf_offset,
                     shift: old.shift,
@@ -879,12 +891,18 @@ const fn zero_reloc() -> Relocation {
 #[cfg(test)]
 mod tests {
     use arbitrary_int::{u6, u10, u12};
-    use gr2d_reg::{ALPHABLEND, CTRL0, CTRL1, CTRLMAIN, Client as Gr2d, SBFMT0};
+    use gr2d_reg::{
+        ALPHABLEND, CTRL0, CTRL1, CTRLMAIN, Client as Gr2d, DSTBA, DSTBA_B, DSTST, PATKEY, PATOS,
+        SBFMT0,
+    };
     use zerocopy::little_endian::U32 as U32LE;
 
-    use crate::{cmdseq::CommandSequence, reg::Register};
+    use crate::{
+        cmdseq::CommandSequence,
+        reg::{Register, reloc::Relocation},
+    };
 
-    use super::{Mask, SetClass, WriteNoIncr, op_mask, op_nonincr, op_setcl};
+    use super::{Mask, SetClass, WriteIncr, WriteNoIncr, op_mask, op_nonincr, op_setcl};
 
     macro_rules! reg_off {
         ($reg:ident) => {
@@ -951,5 +969,51 @@ mod tests {
             words,
             [op_mask(reg_off!(SBFMT0), 0b11), 0xdeadbeef, 0xc0de1ed0]
         );
+    }
+
+    /// Relocations with given (patch_offset, mapping) pairs.
+    fn relocs<const N: usize>(relocs: [(u32, u32); N]) -> Vec<Relocation> {
+        relocs
+            .map(|(patch_offset, mapping)| Relocation {
+                patch_offset,
+                mapping,
+                buf_offset: 0,
+                shift: 0,
+            })
+            .to_vec()
+    }
+
+    #[test]
+    fn test_mask_relocs() {
+        let cmd = Mask::<3, 1, Gr2d, _>::new((
+            PATOS::raw(0x1111),
+            unsafe { DSTBA::for_raw_mapping::<'static, Gr2d>(5, 0, 0) },
+            DSTST::raw(0x2222),
+        ));
+        let words: Vec<u32> = cmd.words().map(U32LE::get).collect();
+        assert_eq!(words[1..], [0x1111, 0, 0x2222]);
+        assert_eq!(cmd.relocs().collect::<Vec<_>>(), relocs([(2, 5)]));
+    }
+
+    #[test]
+    fn test_setcl_relocs() {
+        let cmd = SetClass::<2, 1, Gr2d, _>::with_register_write((PATOS::raw(0x1111), unsafe {
+            DSTBA::for_raw_mapping::<'static, Gr2d>(5, 0, 0)
+        }));
+        let words: Vec<u32> = cmd.words().map(U32LE::get).collect();
+        assert_eq!(words[1..], [0x1111, 0]);
+        assert_eq!(cmd.relocs().collect::<Vec<_>>(), relocs([(2, 5)]));
+    }
+
+    #[test]
+    fn test_incr_relocs() {
+        let cmd = WriteIncr::<3, 2, Gr2d, _>::new((
+            PATKEY::raw(0x1111),
+            unsafe { DSTBA::for_raw_mapping::<'static, Gr2d>(5, 0, 0) },
+            unsafe { DSTBA_B::for_raw_mapping::<'static, Gr2d>(6, 0, 0) },
+        ));
+        let words: Vec<u32> = cmd.words().map(U32LE::get).collect();
+        assert_eq!(words[1..], [0x1111, 0, 0]);
+        assert_eq!(cmd.relocs().collect::<Vec<_>>(), relocs([(2, 5), (3, 6)]));
     }
 }
