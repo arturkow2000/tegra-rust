@@ -1,5 +1,7 @@
 #![no_std]
 
+use core::marker::PhantomData;
+
 use colorspace::Format;
 
 pub mod access;
@@ -36,4 +38,46 @@ pub trait PixelBuffer: Buffer {
 
     /// Buffer stride (pitch) in bytes.
     fn stride(&self) -> u32;
+}
+
+/// Layout of a pixel buffer, detached from the memory backing it.
+#[derive(Debug, Clone, Copy)]
+pub struct PixelLayout<F: Format> {
+    size: u32,
+    width: u32,
+    height: u32,
+    stride: u32,
+    _format: PhantomData<F>,
+}
+impl<F: Format> PixelLayout<F> {
+    /// Capture layout of given pixel buffer.
+    pub fn of(buf: &impl PixelBuffer<Format = F>) -> Self {
+        Self {
+            size: buf.size(),
+            width: buf.width(),
+            height: buf.height(),
+            stride: buf.stride(),
+            _format: PhantomData,
+        }
+    }
+}
+impl<F: Format> Buffer for PixelLayout<F> {
+    fn size(&self) -> u32 {
+        self.size
+    }
+}
+impl<F: Format> PixelBuffer for PixelLayout<F> {
+    type Format = F;
+
+    fn width(&self) -> u32 {
+        self.width
+    }
+
+    fn height(&self) -> u32 {
+        self.height
+    }
+
+    fn stride(&self) -> u32 {
+        self.stride
+    }
 }
