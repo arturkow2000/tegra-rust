@@ -8,7 +8,7 @@ use embedded_graphics::{
     prelude::{Point, Size},
     primitives::Rectangle,
 };
-use host1x_core::queue::Queue as _;
+use host1x_core::{job, queue::Queue as _};
 use host1x_drm::{
     buffer::PixelBuffer,
     device::TegraDRM,
@@ -41,31 +41,23 @@ async fn main() {
     info!("before: {:x?}", &mapping[0..4]);
 
     let mut fence = Syncobj::new(&gpu).unwrap();
-    let mapping = queue
-        .submit(
-            &mut fence,
-            gr2d::clear_with_color(mapping, Color::rgb(255, 0, 0)),
-        )
-        .await
-        .unwrap()
-        .await
-        .unwrap();
-    let mapping = queue
-        .submit(
-            &mut fence,
-            gr2d::fill_rect(
-                mapping,
-                Color::rgb(0, 255, 0),
-                Rectangle {
-                    top_left: Point::new(10, 10),
-                    size: Size::new(100, 100),
-                },
-            ),
-        )
-        .await
-        .unwrap()
-        .await
-        .unwrap();
+    let job = job!(
+        mapping,
+        (
+            |buf| gr2d::clear_with_color(buf, Color::rgb(255, 0, 0)),
+            |buf| {
+                gr2d::fill_rect(
+                    buf,
+                    Color::rgb(0, 255, 0),
+                    Rectangle {
+                        top_left: Point::new(10, 10),
+                        size: Size::new(100, 100),
+                    },
+                )
+            },
+        ),
+    );
+    let mapping = queue.submit(&mut fence, job).await.unwrap().await.unwrap();
     info!("after: {:x?}", &mapping[0..4]);
     instrumentation::get_context().frame(mapping.buffer());
 }
