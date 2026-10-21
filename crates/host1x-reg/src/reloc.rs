@@ -3,18 +3,10 @@
 use core::marker::PhantomData;
 
 use getset::CopyGetters;
+pub use host1x_buffer::access::{ReadOnly, ReadWrite, WriteOnly};
 use host1x_buffer::{ReadableBuffer, WritableBuffer};
 use host1x_client::Client;
 use tock_registers::RegisterLongName;
-
-/// Relocatable pointer to read-only memory.
-pub struct ReadOnly;
-
-/// Relocatable pointer to write-only memory.
-pub struct WriteOnly;
-
-/// Relocatable pointer to read-write memory.
-pub struct ReadWrite;
 
 /// A relocatable memory pointer.
 ///
