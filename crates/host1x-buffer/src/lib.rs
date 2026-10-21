@@ -2,6 +2,7 @@
 
 use colorspace::Format;
 
+pub mod access;
 pub mod fmt;
 
 /// A buffer that is mapped into address space of given Host1x client.
