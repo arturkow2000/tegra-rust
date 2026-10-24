@@ -355,7 +355,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                type Layout = LinearRgb<0, $r_bits, { $r_bits + $g_bits }>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B` means B is at byte 0.
+                type Layout = LinearRgb<{ $b_bits + $g_bits }, $b_bits, 0>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -385,7 +386,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                type Layout = LinearRgb::<{ $b_bits + $g_bits }, $b_bits, 0>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R` means R is at byte 0.
+                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -415,7 +417,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                type Layout = LinearRgb::<$a_bits, { $a_bits + $r_bits }, { $a_bits + $r_bits + $g_bits }>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `x:R:G:B` means B is at byte 0.
+                type Layout = LinearRgb::<{ $b_bits + $g_bits }, $b_bits, 0>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -445,7 +448,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                type Layout = LinearRgba::<0, $a_bits, { $a_bits + $r_bits }, { $a_bits + $r_bits + $g_bits }>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `A:R:G:B` means B is at byte 0.
+                type Layout = LinearRgba::<{ $b_bits + $g_bits }, $b_bits, 0, { $b_bits + $g_bits + $r_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -475,7 +479,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                type Layout = LinearRgb::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `x:B:G:R` means R is at byte 0.
+                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -505,7 +510,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                type Layout = LinearRgba::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits, 0>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `A:B:G:R` means R is at byte 0.
+                type Layout = LinearRgba::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -535,7 +541,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B:x` means x is at byte 0.
+                type Layout = LinearRgb::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -565,7 +572,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                type Layout = LinearRgba::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits }>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B:A` means A is at byte 0.
+                type Layout = LinearRgba::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits, 0>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -595,7 +603,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                type Layout = LinearRgb::<{ $b_bits + $g_bits }, $b_bits, 0>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R:x` means x is at byte 0.
+                type Layout = LinearRgb::<{ $a_bits + $r_bits + $g_bits }, { $a_bits + $r_bits }, $a_bits>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -625,7 +634,8 @@ macro_rules! impl_format_linear {
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                type Layout = LinearRgba::<{ $b_bits + $g_bits }, $b_bits, 0, { $b_bits + $g_bits + $r_bits }>;
+                // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R:A` means A is at byte 0.
+                type Layout = LinearRgba::<$a_bits, { $a_bits + $r_bits }, { $a_bits + $r_bits + $g_bits }, 0>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -993,3 +1003,49 @@ impl_format_linear!(Rgba8888, rgba = (8, 8, 8, 8));
 impl_format_linear!(Rgbx8888, rgbx = (8, 8, 8, 8));
 impl_format_linear!(Xbgr8888, xbgr = (8, 8, 8, 8));
 impl_format_linear!(Xrgb8888, xrgb = (8, 8, 8, 8));
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::color::Color;
+
+    /// Store pure red into a single 32bpp pixel and return the 4 memory bytes.
+    fn red_bytes<F: Format<Encoding = RgbGeneric<u8, u8, u8, u8>>>() -> [u8; 4] {
+        let red = Color::<F::Encoding>::rgb(255, 0, 0);
+        let mut buf = [0u8; 4];
+        let mut planes: [(u32, &mut [u8]); 1] = [(4, &mut buf)];
+        assert!(F::set_pixel(0, 0, &mut planes, BitsPerPixel::BPP32, red));
+        buf
+    }
+
+    // DRM fourccs are MSB->LSB of a little-endian word, so the last-named channel
+    // lands in byte 0. Alpha defaults to fully opaque (0xff).
+
+    #[test]
+    fn bgra8888_byte_order() {
+        // BGRA8888 in memory is [A, R, G, B].
+        assert_eq!(red_bytes::<Bgra8888>(), [0xff, 0xff, 0x00, 0x00]);
+        let red = Color::<<Bgra8888 as Format>::Encoding>::rgb(255, 0, 0);
+        assert_eq!(Bgra8888::color_to_gr2d_reg(red), 0x0000_ffff);
+    }
+
+    #[test]
+    fn rgba8888_byte_order() {
+        // RGBA8888 in memory is [A, B, G, R].
+        assert_eq!(red_bytes::<Rgba8888>(), [0xff, 0x00, 0x00, 0xff]);
+        let red = Color::<<Rgba8888 as Format>::Encoding>::rgb(255, 0, 0);
+        assert_eq!(Rgba8888::color_to_gr2d_reg(red), 0xff00_00ff);
+    }
+
+    #[test]
+    fn argb8888_byte_order() {
+        // ARGB8888 in memory is [B, G, R, A].
+        assert_eq!(red_bytes::<Argb8888>(), [0x00, 0x00, 0xff, 0xff]);
+    }
+
+    #[test]
+    fn abgr8888_byte_order() {
+        // ABGR8888 in memory is [R, G, B, A].
+        assert_eq!(red_bytes::<Abgr8888>(), [0xff, 0x00, 0x00, 0xff]);
+    }
+}
