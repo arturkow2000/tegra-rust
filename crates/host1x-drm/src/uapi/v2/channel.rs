@@ -5,6 +5,7 @@ use std::{
     os::fd::{AsFd, AsRawFd},
 };
 
+use host1x_buffer::access::ReadWrite;
 use host1x_core::cmdseq::CommandSequence;
 use tracing::field;
 
@@ -12,7 +13,7 @@ use crate::{
     buffer::BufferType,
     device::TegraDRM,
     fence::Syncobj,
-    mapping::{MappingMode, ReadWrite},
+    mapping::MappingMode,
     uapi::{
         v1::buffer::GenericBuffer,
         v2::{channel::mapping::BufferMapping, syncpt::SyncPoint},
@@ -101,6 +102,9 @@ impl<C: host1x_client::Client> Channel<C> {
         };
         Ok(fence)
     }
+}
+impl<C: host1x_client::Client> host1x_core::queue::Channel for Channel<C> {
+    type Client = C;
 }
 impl<C: host1x_client::Client> Drop for Channel<C> {
     fn drop(&mut self) {

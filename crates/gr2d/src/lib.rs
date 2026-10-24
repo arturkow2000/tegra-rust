@@ -11,7 +11,7 @@ use host1x_buffer::{PixelBuffer, WritableBuffer};
 use crate::format::Gr2dFormat;
 
 /// Clear entire buffer to black color.
-pub fn clear<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(
+pub fn clear<'id, B: PixelBuffer + WritableBuffer<'id, gr2d_reg::Client>>(
     buffer: B,
 ) -> fill::Fill<B, fill::NoClip>
 where
@@ -21,7 +21,7 @@ where
 }
 
 /// Clear entire buffer to the given color.
-pub fn clear_with_color<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(
+pub fn clear_with_color<'id, B: PixelBuffer + WritableBuffer<'id, gr2d_reg::Client>>(
     buffer: B,
     color: Color<<B::Format as Format>::Encoding>,
 ) -> fill::Fill<B, fill::NoClip>
@@ -32,7 +32,7 @@ where
 }
 
 /// Fill given region in a buffer with solid color.
-pub fn fill_rect<B: PixelBuffer + WritableBuffer<gr2d_reg::Client>>(
+pub fn fill_rect<'id, B: PixelBuffer + WritableBuffer<'id, gr2d_reg::Client>>(
     buffer: B,
     color: Color<<B::Format as Format>::Encoding>,
     rect: Rectangle,

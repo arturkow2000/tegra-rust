@@ -20,7 +20,7 @@ mod p {
     use crate::format::Gr2dFormat;
 
     pub trait ClipMode {
-        fn cmdseq<F: Format + Gr2dFormat>(&self) -> impl CommandSequence<gr2d_reg::Client>;
+        fn cmdseq<F: Format + Gr2dFormat>(self) -> impl CommandSequence<gr2d_reg::Client>;
     }
 }
 
@@ -29,7 +29,7 @@ pub trait ClipMode: p::ClipMode {}
 pub struct Clip(pub Rectangle);
 impl p::ClipMode for Clip {
     fn cmdseq<F: Format + Gr2dFormat>(
-        &self,
+        self,
     ) -> impl host1x_core::cmdseq::CommandSequence<gr2d_reg::Client> {
         let bpp = <F as Format>::Encoding::BPP;
 
@@ -54,7 +54,7 @@ impl ClipMode for Clip {}
 pub struct NoClip;
 impl p::ClipMode for NoClip {
     fn cmdseq<F: Format + Gr2dFormat>(
-        &self,
+        self,
     ) -> impl host1x_core::cmdseq::CommandSequence<gr2d_reg::Client> {
         let bpp = <F as Format>::Encoding::BPP;
 
@@ -76,7 +76,7 @@ pub struct Fill<Buffer: PixelBuffer, Clip> {
     clip: Clip,
     color: Color<<Buffer::Format as Format>::Encoding>,
 }
-impl<Buffer: PixelBuffer + WritableBuffer<gr2d_reg::Client>, Clip: ClipMode> Fill<Buffer, Clip> {
+impl<Buffer: PixelBuffer, Clip: ClipMode> Fill<Buffer, Clip> {
     pub(crate) fn new(
         buffer: Buffer,
         clip: Clip,
@@ -89,36 +89,39 @@ impl<Buffer: PixelBuffer + WritableBuffer<gr2d_reg::Client>, Clip: ClipMode> Fil
         }
     }
 }
-unsafe impl<Buffer: PixelBuffer + WritableBuffer<gr2d_reg::Client>, Clip: ClipMode> Task
-    for Fill<Buffer, Clip>
+// Safety: the only relocation targets `buffer`, which is branded with 'id.
+unsafe impl<'id, Buffer: PixelBuffer + WritableBuffer<'id, gr2d_reg::Client>, Clip: ClipMode>
+    Task<'id> for Fill<Buffer, Clip>
 where
     Buffer::Format: Gr2dFormat,
 {
     type Client = gr2d_reg::Client;
-    type Buffers = Buffer;
+    type Output = Buffer;
 
-    fn buffers(self) -> Self::Buffers {
-        self.buffer
-    }
-
-    fn cmdseq(&mut self) -> impl CommandSequence<gr2d_reg::Client> {
-        let width = self.buffer.width();
-        let height = self.buffer.height();
-        let stride = self.buffer.stride();
-        (
+    fn split(self) -> (impl CommandSequence<gr2d_reg::Client>, Self::Output) {
+        let Self {
+            mut buffer,
+            clip,
+            color,
+        } = self;
+        let width = buffer.width();
+        let height = buffer.height();
+        let stride = buffer.stride();
+        let seq = (
             SetClass::<_, _, gr2d_reg::Client, _>::new(),
             Mask::<2, 0, gr2d_reg::Client, _>::new((TRIGGER0::raw(0x3a), CMDSEL::OUTPUT::MEMORY)),
-            self.clip.cmdseq::<Buffer::Format>(),
+            clip.cmdseq::<Buffer::Format>(),
             Mask::<2, 1, gr2d_reg::Client, _>::new((
-                DSTBA::write(&mut self.buffer),
+                DSTBA::write(&mut buffer),
                 DSTST::DSTS.val(stride as _),
             )),
-            WriteNoIncr::new([SRCFGC::SRCFGC.val(Buffer::Format::color_to_gr2d_reg(self.color))]),
+            WriteNoIncr::new([SRCFGC::SRCFGC.val(Buffer::Format::color_to_gr2d_reg(color))]),
             WriteNoIncr::new([TILEMODE::zero()]),
             Mask::<2, 0, gr2d_reg::Client, _>::new((
                 DSTSIZE::DSTWIDTH.val(width as _) + DSTSIZE::DSTHEIGHT.val(height as _),
                 DSTPS::DSTX.val(0) + DSTPS::DSTY.val(0),
             )),
-        )
+        );
+        (seq, buffer)
     }
 }

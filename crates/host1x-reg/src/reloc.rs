@@ -3,18 +3,10 @@
 use core::marker::PhantomData;
 
 use getset::CopyGetters;
+pub use host1x_buffer::access::{ReadOnly, ReadWrite, WriteOnly};
 use host1x_buffer::{ReadableBuffer, WritableBuffer};
 use host1x_client::Client;
 use tock_registers::RegisterLongName;
-
-/// Relocatable pointer to read-only memory.
-pub struct ReadOnly;
-
-/// Relocatable pointer to write-only memory.
-pub struct WriteOnly;
-
-/// Relocatable pointer to read-write memory.
-pub struct ReadWrite;
 
 /// A relocatable memory pointer.
 ///
@@ -22,8 +14,12 @@ pub struct ReadWrite;
 /// by the userspace. Those are written empty to the command stream and additional
 /// relocation data is created, that during command submission is handled by
 /// kernel mode driver to compute absolute memory addresses to be programmed into GPU.
+///
+/// `'id` is the (invariant) brand of the target buffer. Contrary to a borrow, it
+/// doesn't keep the buffer locked, so a task may emit relocations and then hand
+/// the buffer over to the next task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, CopyGetters)]
-pub struct Relocatable<'a, R: RegisterLongName, M, C: Client> {
+pub struct Relocatable<'id, R: RegisterLongName, M, C: Client> {
     #[get_copy = "pub"]
     mapping: u32,
 
@@ -34,75 +30,54 @@ pub struct Relocatable<'a, R: RegisterLongName, M, C: Client> {
     shift: u32,
 
     _reg: PhantomData<R>,
-    _lifetime: PhantomData<&'a ()>,
+    _brand: PhantomData<fn(&'id ()) -> &'id ()>,
     _mode: PhantomData<M>,
     _client: PhantomData<C>,
 }
 
-impl<R: RegisterLongName, M, C: Client> Relocatable<'static, R, M, C> {
+impl<'id, R: RegisterLongName, M, C: Client> Relocatable<'id, R, M, C> {
     /// Create a relocatable address using raw mapping ID.
     ///
     /// # Safety
-    /// This bypasses Rust ownership model in reference to the buffer (relocation target).
-    /// Caller must ensure that [`Relocatable`] doesn't outlive the mapping and that
-    /// Rust's aliasing rules are respected.
+    /// This bypasses the brand check. Caller must ensure that the mapping belongs
+    /// to the job identified by `'id` and that Rust's aliasing rules are respected
+    /// for the target buffer.
     pub const unsafe fn for_raw_mapping(mapping: u32, buf_offset: u64, shift: u32) -> Self {
         Self {
             mapping,
             buf_offset,
             shift,
             _reg: PhantomData,
-            _lifetime: PhantomData,
+            _brand: PhantomData,
             _mode: PhantomData,
             _client: PhantomData,
         }
     }
 }
 
-impl<'a, R: RegisterLongName, C: Client> Relocatable<'a, R, ReadOnly, C> {
+impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, ReadOnly, C> {
     /// Create relocatable address for reading from the buffer.
-    pub fn read(buf: &'a impl ReadableBuffer<C>) -> Self {
-        Self {
-            mapping: buf.mapping_id(),
-            buf_offset: 0,
-            shift: 0,
-            _reg: PhantomData,
-            _lifetime: PhantomData,
-            _mode: PhantomData,
-            _client: PhantomData,
-        }
+    pub fn read(buf: &impl ReadableBuffer<'id, C>) -> Self {
+        // Safety: the buffer carries the 'id brand.
+        unsafe { Self::for_raw_mapping(buf.mapping_id(), 0, 0) }
     }
 }
 
-impl<'a, R: RegisterLongName, C: Client> Relocatable<'a, R, WriteOnly, C> {
+impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, WriteOnly, C> {
     /// Create relocatable address for writing to the buffer.
-    pub fn write(buf: &'a mut impl WritableBuffer<C>) -> Self {
-        Self {
-            mapping: buf.mapping_id(),
-            buf_offset: 0,
-            shift: 0,
-            _reg: PhantomData,
-            _lifetime: PhantomData,
-            _mode: PhantomData,
-            _client: PhantomData,
-        }
+    pub fn write(buf: &mut impl WritableBuffer<'id, C>) -> Self {
+        // Safety: the buffer carries the 'id brand.
+        unsafe { Self::for_raw_mapping(buf.mapping_id(), 0, 0) }
     }
 }
 
-impl<'a, R: RegisterLongName, C: Client> Relocatable<'a, R, ReadWrite, C> {
+impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, ReadWrite, C> {
     // TODO: support offsets in safe API.
 
     /// Create relocatable address for reading and writing the buffer.
-    pub fn new(buf: &'a mut (impl ReadableBuffer<C> + WritableBuffer<C>)) -> Self {
-        Self {
-            mapping: buf.mapping_id(),
-            buf_offset: 0,
-            shift: 0,
-            _reg: PhantomData,
-            _lifetime: PhantomData,
-            _mode: PhantomData,
-            _client: PhantomData,
-        }
+    pub fn new(buf: &mut (impl ReadableBuffer<'id, C> + WritableBuffer<'id, C>)) -> Self {
+        // Safety: the buffer carries the 'id brand.
+        unsafe { Self::for_raw_mapping(buf.mapping_id(), 0, 0) }
     }
 }
 
