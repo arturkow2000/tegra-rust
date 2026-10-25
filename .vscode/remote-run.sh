@@ -6,34 +6,32 @@ shift
 
 ipv6=192.168.0.163
 
-tmp="$(mktemp --tmpdir -d remote-run-XXXXXXXXX)"
-master="$tmp/ssh.sock"
-ssh_pid=""
+# Keep the SSH connection open in the background between runs. A master
+# connection is opened on first use at a stable socket path and reused by later
+# invocations; ControlPersist leaves it running for $persist after the last
+# client disconnects, so repeated `cargo run`/`cargo test` don't pay the TCP +
+# key-exchange + auth cost every time.
+persist=10m
+master="${XDG_RUNTIME_DIR:-/tmp}/remote-run-${ipv6}.sock"
+ssh_opts=(
+    -o ControlMaster=auto
+    -o ControlPath="$master"
+    -o ControlPersist="$persist"
+    -o StrictHostKeyChecking=no
+)
+
 remote_tmp=""
 cleanup() {
     if [ -n "$remote_tmp" ]; then
-        ssh -o BatchMode=yes -S "$master" root@$ipv6 "rm -rf '$remote_tmp'" || true
+        ssh "${ssh_opts[@]}" root@$ipv6 "rm -rf '$remote_tmp'" || true
     fi
-
-    if [ -n "$ssh_pid" ]; then
-        kill $ssh_pid || true
-        wait $ssh_pid || true
-    fi
-    rm -rf "$tmp"
 }
 trap cleanup EXIT
 
-ssh -M -S "$master" -o ControlMaster=yes -o ControlPersist=no -o StrictHostKeyChecking=no root@$ipv6 -N &
-ssh_pid=$!
-
-remote_tmp="$(ssh -T -S "$master" root@$ipv6 "mktemp --tmpdir -d remote-run-XXXXXXXXX")"
+# The first ssh here auto-starts the persistent master (ControlMaster=auto).
+remote_tmp="$(ssh "${ssh_opts[@]}" root@$ipv6 "mktemp --tmpdir -d remote-run-XXXXXXXXX")"
 remote_file="$remote_tmp/$(basename "$prog")"
 
-status="$(ssh -T -S "$master" root@$ipv6 "cat > '$remote_file' && chmod +x '$remote_file'; echo $?" \
-    < "$prog")"
-if [ "$status" -ne 0 ]; then
-    echo "upload failed: $status" >&2
-    exit 1
-fi
+ssh "${ssh_opts[@]}" root@$ipv6 "cat > '$remote_file' && chmod +x '$remote_file'" < "$prog"
 
-ssh -t -S "$master" root@$ipv6 "env RUST_LOG=debug RUST_BACKTRACE=1 SPDLOG_LEVEL=debug '$remote_file'; rm '$remote_file'"
+ssh -t "${ssh_opts[@]}" root@$ipv6 "env RUST_LOG=debug RUST_BACKTRACE=1 SPDLOG_LEVEL=debug '$remote_file'"
