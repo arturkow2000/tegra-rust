@@ -414,7 +414,7 @@ mod tests {
             )
                 .try_write_to_slice(&mut dest[..])
                 .map(ValidRawCommandArray::into_inner),
-            Ok(&[0x1440, 0x201c0001, 0x800e,][..])
+            Ok(&[0x1440, 0x201c0001, 0x080e,][..])
         );
     }
 }
