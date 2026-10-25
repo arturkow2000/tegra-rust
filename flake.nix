@@ -217,6 +217,8 @@
             pkgsMusl.pkgsBuildBuild.openssh
             rustMusl
             (mkCrossClangToolchain { inherit (pkgsMusl.stdenv) cc; })
+            pkgsMusl.pkgsBuildBuild.ripgrep
+            pkgsMusl.pkgsBuildBuild.just
           ]
           ++ lib.optional includeGlibc rustGlibc
           # When using clang this will be just another wrapper around same compiler.

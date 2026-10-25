@@ -5,7 +5,8 @@
         "vscode": {
             "extensions": [
                 "rust-lang.rust-analyzer",
-                "tamasfe.even-better-toml"
+                "tamasfe.even-better-toml",
+                "nefrob.vscode-just-syntax"
             ],
             "settings": {
                 "rust-analyzer.server.path": "rust-analyzer",
