@@ -10,7 +10,7 @@ ipv6=192.168.0.163
 # connection is opened on first use at a stable socket path and reused by later
 # invocations; ControlPersist leaves it running for $persist after the last
 # client disconnects, so repeated `cargo run`/`cargo test` don't pay the TCP +
-# key-exchange + auth cost every time.
+# key-exchange + auth cost every time. -C compresses the transfer.
 persist=10m
 master="${XDG_RUNTIME_DIR:-/tmp}/remote-run-${ipv6}.sock"
 ssh_opts=(
@@ -18,6 +18,7 @@ ssh_opts=(
     -o ControlPath="$master"
     -o ControlPersist="$persist"
     -o StrictHostKeyChecking=no
+    -C
 )
 
 # Upload a debug-stripped copy of the binary. A build-std debug binary is ~37M,
