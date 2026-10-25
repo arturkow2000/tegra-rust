@@ -52,7 +52,7 @@ impl_registers![
         ]
     ],
     pub SBFMT0 OFFSET(0x1c) RELOCATABLE(false) [
-        DIFMT OFFSET(12) NUMBITS(5) [
+        DIFMT OFFSET(8) NUMBITS(5) [
             RGB565 = 0b01000,
             RGBA8888 = 0b01110,
             BGRA8888 = 0b01111,
