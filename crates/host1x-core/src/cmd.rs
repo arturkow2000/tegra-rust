@@ -959,7 +959,7 @@ mod tests {
             words,
             [
                 op_setcl(u10::new(0x51), u12::new(0x1c), u6::new(0b101111)),
-                0xe00f,
+                0x0e0f,
                 0x00,
                 0x00,
                 0x00,
@@ -977,7 +977,7 @@ mod tests {
         .words()
         .map(U32LE::get)
         .collect();
-        assert_eq!(words, [op_nonincr(u12::new(0x1c), 2), 0x8008, 0x42]);
+        assert_eq!(words, [op_nonincr(u12::new(0x1c), 2), 0x0808, 0x42]);
     }
 
     #[test]
