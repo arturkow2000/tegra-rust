@@ -106,11 +106,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791462319,
-        "narHash": "sha256-SXMQE9MORPKyA8/hqiLxf9aUHxUYTIS/B5GjxLxlw1U=",
+        "lastModified": 1792406512,
+        "narHash": "sha256-nYiB/ZquALlrvW+0Ie1CH9bXQh3OJJBr6A94oLk6B74=",
         "owner": "arturkow2000",
         "repo": "nix-devcontainer",
-        "rev": "0c0b48ba1ed52877e5d051dbc7f17fa9c79672cb",
+        "rev": "a4d0f755e2f680d1d10c24f1c9c79cb55bdbc4e5",
         "type": "github"
       },
       "original": {
