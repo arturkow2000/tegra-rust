@@ -578,8 +578,8 @@ unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: SetCLArgs<C>
 /// ```
 /// # use host1x_core::cmd::WriteIncr;
 /// # use gr2d_reg::{CTRL0, CTRL1, SBFMT0};
-/// WriteIncr::<1, 0, gr2d_reg::Client, _>::new((SBFMT0::SIFMT::BGRA8888 + SBFMT0::DIFMT::RGBA8888, ));
-/// WriteIncr::<3, 0, gr2d_reg::Client, _>::new((SBFMT0::SIFMT::BGRA8888 + SBFMT0::DIFMT::RGBA8888, CTRL0::IMODE::MULTIPLEX, CTRL1::FR_TYPE::ROT_270 + CTRL1::FR_MODE::SRC_DST_COPY));
+/// WriteIncr::<1, 0, gr2d_reg::Client, _>::new((SBFMT0::SIFMT::B8G8R8A8 + SBFMT0::DIFMT::R8G8B8A8, ));
+/// WriteIncr::<3, 0, gr2d_reg::Client, _>::new((SBFMT0::SIFMT::B8G8R8A8 + SBFMT0::DIFMT::R8G8B8A8, CTRL0::IMODE::MULTIPLEX, CTRL1::FR_TYPE::ROT_270 + CTRL1::FR_MODE::SRC_DST_COPY));
 /// ```
 ///
 /// Compiler checks that whether the command can actually be built, so for example
@@ -589,7 +589,7 @@ unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: SetCLArgs<C>
 /// ```compile_fail,E0080
 /// # use host1x_core::cmd::WriteIncr;
 /// # use gr2d_reg::{CTRL1, SBFMT0};
-/// WriteIncr::<2, 0, gr2d_reg::Client, _>::new((SBFMT0::SIFMT::BGRA8888 + SBFMT0::DIFMT::RGBA8888, CTRL1::FR_TYPE::ROT_270 + CTRL1::FR_MODE::SRC_DST_COPY));
+/// WriteIncr::<2, 0, gr2d_reg::Client, _>::new((SBFMT0::SIFMT::B8G8R8A8 + SBFMT0::DIFMT::R8G8B8A8, CTRL1::FR_TYPE::ROT_270 + CTRL1::FR_MODE::SRC_DST_COPY));
 /// ```
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -946,7 +946,7 @@ mod tests {
             .collect();
         assert_eq!(words, [op_setcl(u10::new(0x51), u12::new(0), u6::new(0))]);
         let words: Vec<u32> = SetClass::<5, 0, Gr2d, _>::with_register_write((
-            SBFMT0::SIFMT::BGRA8888 + SBFMT0::DIFMT::RGBA8888,
+            SBFMT0::SIFMT::B8G8R8A8 + SBFMT0::DIFMT::R8G8B8A8,
             CTRL0::IMODE::MULTIPLEX,
             CTRL1::zero(),
             CTRLMAIN::zero(),
@@ -971,7 +971,7 @@ mod tests {
     #[test]
     fn test_nonincr_gen() {
         let words: Vec<u32> = WriteNoIncr::new([
-            SBFMT0::SIFMT::RGB565 + SBFMT0::DIFMT::RGB565,
+            SBFMT0::SIFMT::B5G6R5 + SBFMT0::DIFMT::B5G6R5,
             SBFMT0::raw(0x42),
         ])
         .words()

@@ -51,16 +51,20 @@ impl_registers![
             SB = 1,
         ]
     ],
+    // Format names follow the TRM, which lists channels starting from the least
+    // significant bits, e.g. B8G8R8A8 is A[31:24] R[23:16] G[15:8] B[7:0]. That's
+    // the reverse of DRM fourcc naming: B8G8R8A8 is DRM ARGB8888, R8G8B8A8 is DRM
+    // ABGR8888 and B5G6R5 is DRM RGB565.
     pub SBFMT0 OFFSET(0x1c) RELOCATABLE(false) [
         DIFMT OFFSET(8) NUMBITS(5) [
-            RGB565 = 0b01000,
-            RGBA8888 = 0b01110,
-            BGRA8888 = 0b01111,
+            B5G6R5 = 0b01000,
+            R8G8B8A8 = 0b01110,
+            B8G8R8A8 = 0b01111,
         ],
         SIFMT OFFSET(0) NUMBITS(5) [
-            RGB565 = 0b01000,
-            RGBA8888 = 0b01110,
-            BGRA8888 = 0b01111,
+            B5G6R5 = 0b01000,
+            R8G8B8A8 = 0b01110,
+            B8G8R8A8 = 0b01111,
         ]
     ],
     pub CTRL0 OFFSET(0x1d) RELOCATABLE(false) [

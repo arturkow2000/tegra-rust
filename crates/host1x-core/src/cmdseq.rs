@@ -405,7 +405,7 @@ mod tests {
         assert_eq!(
             (
                 SetClass::<_, _, Gr2d, _>::new(),
-                WriteNoIncr::new([SBFMT0::DIFMT::RGB565 + SBFMT0::SIFMT::RGBA8888]),
+                WriteNoIncr::new([SBFMT0::DIFMT::B5G6R5 + SBFMT0::SIFMT::R8G8B8A8]),
             )
                 .try_write_to_slice(&mut dest[..])
                 .map(ValidRawCommandArray::into_inner),
@@ -418,7 +418,7 @@ mod tests {
         assert_eq!(
             (
                 SetClass::<_, _, Gr2d, _>::new(),
-                WriteNoIncr::new([SBFMT0::DIFMT::RGB565 + SBFMT0::SIFMT::RGBA8888]),
+                WriteNoIncr::new([SBFMT0::DIFMT::B5G6R5 + SBFMT0::SIFMT::R8G8B8A8]),
             )
                 .try_write_to_slice(&mut dest[..])
                 .map(ValidRawCommandArray::into_inner),
