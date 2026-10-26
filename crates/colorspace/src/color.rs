@@ -69,6 +69,13 @@ impl<E: RgbAlpha> Color<E> {
     }
 }
 
+impl<E: Encoding + ?Sized> PartialEq for Color<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl<E: Encoding + ?Sized> Eq for Color<E> {}
+
 #[cfg(test)]
 mod tests {
     use arbitrary_int::{
