@@ -52,7 +52,13 @@ where
         Self(self.0.clone())
     }
 }
-impl<E: Encoding + ?Sized> Copy for Color<E> where E::Storage: Copy {}
+impl<E: Encoding + ?Sized> Copy for Color<E> {}
+impl<E: Encoding + ?Sized> PartialEq for Color<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl<E: Encoding + ?Sized> Eq for Color<E> {}
 
 impl<E: RgbAlpha> Color<E> {
     // TODO: make this const
