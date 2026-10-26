@@ -36,7 +36,7 @@ impl BitsPerPixel {
 
 /// Pixel encoding, defines what channels form color of a pixel and bitsize of each channel value.
 pub trait Encoding: Copy + sealed::SealedEncoding {
-    type Storage: Copy;
+    type Storage: Copy + Eq;
     const BPP: BitsPerPixel;
 
     const BLACK: Color<Self>;
@@ -138,7 +138,7 @@ pub enum Channel {
     A,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct NoAlpha;
 pub trait DefaultAlpha: sealed::DefaultAlpha {
     const ALPHA_BITS: u8;
