@@ -40,6 +40,8 @@ pub trait Encoding: sealed::SealedEncoding {
     const BPP: BitsPerPixel;
 
     const BLACK: Color<Self>;
+
+    fn enumerate_channels(stor: &Self::Storage) -> impl Iterator<Item = (&'static str, u32)>;
 }
 
 /// An RGB (Red Green Blue) encoding.
@@ -158,24 +160,39 @@ impl<T: UnsignedInteger> DefaultAlpha for T {
 #[derive(Clone, Copy)]
 pub struct RgbGeneric<R, G, B, A>(PhantomData<(R, G, B, A)>);
 impl<
-    R: UnsignedInteger + Into<u32>,
-    G: UnsignedInteger + Into<u32>,
-    B: UnsignedInteger + Into<u32>,
+    R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    G: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    B: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
     A: DefaultAlpha,
 > RgbGeneric<R, G, B, A>
 {
 }
-impl<R: UnsignedInteger + Into<u32>, G: UnsignedInteger + Into<u32>, B: UnsignedInteger + Into<u32>>
-    sealed::SealedEncoding for RgbGeneric<R, G, B, NoAlpha>
+impl<
+    R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    G: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    B: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+> sealed::SealedEncoding for RgbGeneric<R, G, B, NoAlpha>
 {
 }
-impl<R: UnsignedInteger + Into<u32>, G: UnsignedInteger + Into<u32>, B: UnsignedInteger + Into<u32>>
-    Encoding for RgbGeneric<R, G, B, NoAlpha>
+impl<
+    R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    G: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    B: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+> Encoding for RgbGeneric<R, G, B, NoAlpha>
 {
     type Storage = (R, G, B, NoAlpha);
     const BPP: BitsPerPixel = BitsPerPixel::try_from_usize(R::BITS + G::BITS + B::BITS);
 
     const BLACK: Color<Self> = Color((R::MIN, G::MIN, B::MIN, NoAlpha));
+
+    fn enumerate_channels(stor: &Self::Storage) -> impl Iterator<Item = (&'static str, u32)> {
+        [
+            ("r", Self::r(stor).into()),
+            ("g", Self::g(stor).into()),
+            ("b", Self::b(stor).into()),
+        ]
+        .into_iter()
+    }
 
     /*fn to_gr2d_reg(v: Color<Self>) -> u32 {
         // TODO: implement
@@ -183,24 +200,34 @@ impl<R: UnsignedInteger + Into<u32>, G: UnsignedInteger + Into<u32>, B: Unsigned
     }*/
 }
 impl<
-    R: UnsignedInteger + Into<u32>,
-    G: UnsignedInteger + Into<u32>,
-    B: UnsignedInteger + Into<u32>,
-    A: UnsignedInteger + Into<u32>,
+    R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    G: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    B: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    A: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
 > sealed::SealedEncoding for RgbGeneric<R, G, B, A>
 {
 }
 impl<
-    R: UnsignedInteger + Into<u32>,
-    G: UnsignedInteger + Into<u32>,
-    B: UnsignedInteger + Into<u32>,
-    A: UnsignedInteger + Into<u32>,
+    R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    G: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    B: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
+    A: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,
 > Encoding for RgbGeneric<R, G, B, A>
 {
     type Storage = (R, G, B, A);
     const BPP: BitsPerPixel = BitsPerPixel::try_from_usize(R::BITS + G::BITS + B::BITS + A::BITS);
 
     const BLACK: Color<Self> = Color((R::MIN, G::MIN, B::MIN, A::DEFAULT_ALPHA));
+
+    fn enumerate_channels(stor: &Self::Storage) -> impl Iterator<Item = (&'static str, u32)> {
+        [
+            ("r", Self::r(stor).into()),
+            ("g", Self::g(stor).into()),
+            ("b", Self::b(stor).into()),
+            ("a", Self::a(stor).into()),
+        ]
+        .into_iter()
+    }
 }
 impl<
     R: UnsignedInteger<UnderlyingType: Pod + AnyBitPattern> + Into<u32> + 'static,

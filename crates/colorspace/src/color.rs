@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::{Encoding, Rgb, RgbAlpha};
 
 pub struct Color<E: Encoding + ?Sized>(pub(crate) E::Storage);
@@ -59,6 +61,15 @@ impl<E: Encoding + ?Sized> PartialEq for Color<E> {
     }
 }
 impl<E: Encoding + ?Sized> Eq for Color<E> {}
+impl<E: Encoding + ?Sized> fmt::Debug for Color<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = f.debug_struct("Color");
+        for (k, v) in E::enumerate_channels(&self.0) {
+            s.field(k, &v);
+        }
+        s.finish()
+    }
+}
 
 impl<E: RgbAlpha> Color<E> {
     // TODO: make this const
