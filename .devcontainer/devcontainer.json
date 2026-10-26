@@ -6,7 +6,8 @@
             "extensions": [
                 "rust-lang.rust-analyzer",
                 "tamasfe.even-better-toml",
-                "nefrob.vscode-just-syntax"
+                "nefrob.vscode-just-syntax",
+                "anthropic.claude-code"
             ],
             "settings": {
                 "rust-analyzer.server.path": "rust-analyzer",
@@ -14,6 +15,12 @@
                 "rust-analyzer.rustfmt.overrideCommand": null
             }
         }
+    },
+    "runArgs": [
+        "--mount=type=volume,source=claude-tegra-rust,destination=/home/vscode/.claude"
+    ],
+    "containerEnv": {
+        "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
     },
     // Workaround for https://github.com/arturkow2000/nix-devcontainer/issues/1
     "updateRemoteUserUID": false
