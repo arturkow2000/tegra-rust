@@ -4,7 +4,7 @@ extern crate tracing;
 use colorspace::{Encoding, Format};
 use host1x_buffer::PixelBuffer;
 use once_cell::sync::OnceCell;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 use tracy_client::{Client, GpuContextType, register_demangler};
 
 register_demangler!();
@@ -83,12 +83,24 @@ impl TracingContext {
     }
 }
 
+/// Set up tracing for normal application (for tests use [`init_for_testing`]).
 pub fn init() {
+    init_inner(EnvFilter::try_from_env("TEGRA_LOG").unwrap_or_else(|_| EnvFilter::new("error")));
+}
+
+/// Used for integration tests.
+pub fn init_for_testing() {
+    let filter =
+        EnvFilter::try_from_env("TEGRA_TEST_LOG").unwrap_or_else(|_| EnvFilter::new("off"));
+    init_inner(filter);
+}
+
+fn init_inner(console_filter: EnvFilter) {
     tracing_subscriber::registry()
         // Put tracy layer before fmt layer which injects ansi escape sequences causing garbled span names in Tracy.
         // https://github.com/nagisa/rust_tracy_client/issues/72
         .with(tracing_tracy::TracyLayer::default())
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().with_filter(console_filter))
         .init();
 
     let tracy = Client::start();
