@@ -10,6 +10,8 @@ ipv6=192.168.0.163
 forward_env=(
     RUST_LOG
     RUST_BACKTRACE
+    TEGRA_LOG
+    TEGRA_TEST_LOG
 )
 
 # Keep the SSH connection open in the background between runs. A master
