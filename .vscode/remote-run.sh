@@ -52,5 +52,4 @@ remote_tmp="$(ssh "${ssh_opts[@]}" root@$ipv6 "mktemp --tmpdir -d remote-run-XXX
 remote_file="$remote_tmp/$(basename "$prog")"
 
 ssh "${ssh_opts[@]}" root@$ipv6 "cat > '$remote_file' && chmod +x '$remote_file'" < "$upload"
-
-ssh -t "${ssh_opts[@]}" root@$ipv6 "env RUST_LOG=debug RUST_BACKTRACE=1 SPDLOG_LEVEL=debug '$remote_file'"
+ssh -t "${ssh_opts[@]}" root@$ipv6 "env RUST_LOG=debug RUST_BACKTRACE=1 SPDLOG_LEVEL=debug '$remote_file' $@"
