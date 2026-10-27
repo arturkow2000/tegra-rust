@@ -6,6 +6,12 @@ shift
 
 ipv6=192.168.0.163
 
+# Variables to forward to remote host, verbatim.
+forward_env=(
+    RUST_LOG
+    RUST_BACKTRACE
+)
+
 # Keep the SSH connection open in the background between runs. A master
 # connection is opened on first use at a stable socket path and reused by later
 # invocations; ControlPersist leaves it running for $persist after the last
@@ -52,4 +58,12 @@ remote_tmp="$(ssh "${ssh_opts[@]}" root@$ipv6 "mktemp --tmpdir -d remote-run-XXX
 remote_file="$remote_tmp/$(basename "$prog")"
 
 ssh "${ssh_opts[@]}" root@$ipv6 "cat > '$remote_file' && chmod +x '$remote_file'" < "$upload"
-ssh -t "${ssh_opts[@]}" root@$ipv6 "env RUST_LOG=debug RUST_BACKTRACE=1 SPDLOG_LEVEL=debug '$remote_file' $@"
+
+remote_env_args=""
+for name in "${forward_env[@]}"; do
+    if [ -n "${!name+set}" ]; then
+        remote_env_args+=" $(printf '%q' "$name=${!name}")"
+    fi
+done
+
+ssh -t "${ssh_opts[@]}" root@$ipv6 "env$remote_env_args '$remote_file' $@"
