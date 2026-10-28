@@ -1,0 +1,31 @@
+# Integration tests for hardware. Currently GR2D only.
+[package]
+name = "hw-tests"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+# All tests are located in single binary. This is partially done due to performance
+# reasons - single app startup, single GPU init, etc., partially to allow attaching
+# Tracy for diagnosing performance (I plan adding proper benchmarks later).
+# Need to disable unit and doctests as these produce additional binaries and Tracy
+# will attach only to the binary that runs first.
+test = false
+doctest = false
+
+[dependencies]
+colorspace.path = "../colorspace"
+gr2d.path = "../gr2d"
+gr2d-reg.path = "../gr2d-reg"
+host1x-core.path = "../host1x-core"
+host1x-drm.path = "../host1x-drm"
+host1x-buffer.path = "../host1x-buffer"
+embedded-graphics.workspace = true
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "sync"] }
+rstest = "0.23"
+tokio-shared-rt = "0.1"
+tracing.workspace = true
+instrumentation.path = "../instrumentation"
+tegra-test-macros.path = "tegra-test-macros"
+once_cell.workspace = true

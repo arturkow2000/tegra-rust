@@ -11,6 +11,8 @@ members = [
     "crates/host1x-core",
     "crates/host1x-drm",
     "crates/host1x-reg",
+    "crates/hw-tests",
+    "crates/hw-tests/tegra-test-macros",
     "crates/instrumentation",
 ]
 
