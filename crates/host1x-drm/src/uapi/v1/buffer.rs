@@ -4,7 +4,7 @@ use std::{
     mem::{ManuallyDrop, forget},
     num::NonZeroU32,
     ops::{Deref, DerefMut},
-    os::fd::{AsFd, AsRawFd},
+    os::fd::AsRawFd,
     ptr::{self, NonNull},
     slice,
 };
@@ -42,7 +42,7 @@ impl<MM: MappingMode, F: Format> GenericBuffer<MM, PixelBuffer<F>> {
 
     /// Create new GEM buffer.
     #[instrument(skip_all, fields(
-        dev = dev.as_fd().as_raw_fd(),
+        dev = dev.as_raw_fd(),
     ))]
     pub fn new(dev: &TegraDRM, width: NonZeroU32, height: NonZeroU32) -> io::Result<Self> {
         struct DropGuard<'a> {
@@ -190,7 +190,7 @@ impl<MM: MappingMode, T: BufferType> Drop for GenericBuffer<MM, T> {
     fn drop(&mut self) {
         let span = debug_span!(
             "drop",
-            dev.fd = self.dev.as_fd().as_raw_fd(),
+            dev.fd = self.dev.as_raw_fd(),
             buffer.id = self.handle,
         );
         let _guard = span.enter();
@@ -240,7 +240,7 @@ unsafe fn create_gem_mapping<MM: MappingMode>(
     MM::create_cpu_mapping(|prot| {
         let span = debug_span!(
             "create_gem_mapping",
-            dev.fd = dev.as_fd().as_raw_fd(),
+            dev.fd = dev.as_raw_fd(),
             buffer.id = gem,
             buffer.size = size,
             mode = MM::MODE_NAME,
@@ -251,16 +251,23 @@ unsafe fn create_gem_mapping<MM: MappingMode>(
         ioctl::gem_mmap(dev, gem).and_then(|offset| {
             debug!(offset, "mmap GEM");
             unsafe {
-                mmap(ptr::null_mut(), size, prot, MapFlags::SHARED, dev, offset)
-                    .inspect(|ptr| {
-                        debug!(
-                            "mapped to {:p}-{:p}",
-                            ptr,
-                            (*ptr as *mut u8).wrapping_add(size - 1)
-                        )
-                    })
-                    .map_err(io::Error::from)
-                    .map(|p| NonNull::new_unchecked(p as *mut u8))
+                mmap(
+                    ptr::null_mut(),
+                    size,
+                    prot,
+                    MapFlags::SHARED,
+                    dev.as_fd(),
+                    offset,
+                )
+                .inspect(|ptr| {
+                    debug!(
+                        "mapped to {:p}-{:p}",
+                        ptr,
+                        (*ptr as *mut u8).wrapping_add(size - 1)
+                    )
+                })
+                .map_err(io::Error::from)
+                .map(|p| NonNull::new_unchecked(p as *mut u8))
             }
         })
     })

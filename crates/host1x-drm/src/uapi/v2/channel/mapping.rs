@@ -2,7 +2,7 @@ use std::{
     io,
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
-    os::fd::{AsFd, AsRawFd},
+    os::fd::AsRawFd,
     ptr,
 };
 
@@ -34,8 +34,8 @@ impl<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
         // Must be enforced, GEM handles are local to DRM fd, and may trigger UB
         // when handles created from different device instances are mixed up.
         assert_eq!(
-            channel.dev.as_fd().as_raw_fd(),
-            buffer.dev.as_fd().as_raw_fd(),
+            channel.dev.as_raw_fd(),
+            buffer.dev.as_raw_fd(),
             "cannot map buffer to a channel open on another instance of the device"
         );
         match MM::create_host1x_mapping(|flags| {

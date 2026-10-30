@@ -1,6 +1,6 @@
 use std::{
     io,
-    os::fd::{AsFd, AsRawFd},
+    os::fd::AsRawFd,
     pin::Pin,
     task::{Context, Poll, ready},
 };
@@ -34,8 +34,9 @@ impl<C: Client> Queue<C> {
     /// If `channel` and `syncpoint` were created on different device instances.
     #[inline(always)]
     pub fn new(channel: Channel<C>, syncpoint: SyncPoint) -> Self {
-        assert!(
-            channel.dev().as_fd().as_raw_fd() == syncpoint.dev().as_fd().as_raw_fd(),
+        assert_eq!(
+            channel.dev().as_raw_fd(),
+            syncpoint.dev().as_raw_fd(),
             "channel and syncpoint must be created on the same device instance"
         );
         Self { channel, syncpoint }
@@ -62,8 +63,9 @@ impl<C: Client> host1x_core::queue::Queue<C> for Queue<C> {
         // Syncobj handles are local to the device instance. With a fence from another
         // instance the kernel would signal an unrelated syncobj, while we would wait
         // on the fence and give the buffers back before the GPU is done with them.
-        assert!(
-            fence.dev().as_fd().as_raw_fd() == self.channel().dev().as_fd().as_raw_fd(),
+        assert_eq!(
+            fence.dev().as_raw_fd(),
+            self.channel().dev().as_raw_fd(),
             "fence must be created on the same device instance as the queue"
         );
 

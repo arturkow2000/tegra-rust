@@ -270,7 +270,7 @@ pub fn channel_open(fd: &TegraDRM, host1x_class: u32) -> io::Result<ChannelInfo>
     };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_CHANNEL_OPEN, _>::new(&mut v),
         )?
     }
@@ -304,7 +304,7 @@ pub fn channel_map(
     };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_CHANNEL_MAP, _>::new(&mut v),
         )?
     };
@@ -315,7 +315,7 @@ pub fn channel_unmap(fd: &TegraDRM, context: u32, mapping: u32) -> io::Result<()
     let mut v = drm_tegra_channel_unmap { context, mapping };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_CHANNEL_UNMAP, _>::new(&mut v),
         )
         .map_err(Into::into)
@@ -329,7 +329,7 @@ pub fn channel_close(fd: &TegraDRM, context: u32) -> io::Result<()> {
     };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_CHANNEL_CLOSE, _>::new(&mut v),
         )
         .map_err(Into::into)
@@ -378,7 +378,7 @@ pub unsafe fn channel_submit(
     };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_CHANNEL_SUBMIT, _>::new(&mut v),
         )?
     };
@@ -389,7 +389,7 @@ pub fn syncpt_alloc(fd: &TegraDRM) -> io::Result<u32> {
     let mut v = drm_tegra_syncpoint_allocate { id: 0, padding: 0 };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_SYNCPOINT_ALLOCATE, _>::new(&mut v),
         )?
     }
@@ -400,7 +400,7 @@ pub fn syncpt_free(fd: &TegraDRM, id: u32) -> io::Result<()> {
     let mut v = drm_tegra_syncpoint_free { id, padding: 0 };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_SYNCPOINT_FREE, _>::new(&mut v),
         )
         .map_err(Into::into)
@@ -417,7 +417,7 @@ pub fn syncpt_wait(fd: &TegraDRM, id: u32, threshold: u32, timeout_ns: i64) -> i
     };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_SYNCPOINT_WAIT, _>::new(&mut v),
         )?
     };

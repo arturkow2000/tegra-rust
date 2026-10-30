@@ -43,7 +43,7 @@ pub fn gem_create(fd: &TegraDRM, size: u64, flags: drm_tegra_gem_create_flags) -
     };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_GEM_CREATE, _>::new(&mut v),
         )?;
     }
@@ -58,7 +58,7 @@ pub fn gem_mmap(fd: &TegraDRM, handle: u32) -> io::Result<u64> {
     };
     unsafe {
         ioctl::ioctl(
-            fd,
+            fd.as_fd(),
             ioctl::Updater::<DRM_IOCTL_TEGRA_GEM_MMAP, _>::new(&mut v),
         )?
     };

@@ -1,9 +1,4 @@
-use std::{
-    io,
-    marker::PhantomData,
-    mem::MaybeUninit,
-    os::fd::{AsFd, AsRawFd},
-};
+use std::{io, marker::PhantomData, mem::MaybeUninit, os::fd::AsRawFd};
 
 use getset::Getters;
 use host1x_buffer::access::ReadWrite;
@@ -35,7 +30,7 @@ pub struct Channel<C: host1x_client::Client> {
 impl<C: host1x_client::Client> Channel<C> {
     /// Open a new Host1x channel of given class.
     #[instrument(skip_all, fields(
-        dev = dev.as_fd().as_raw_fd(),
+        dev = dev.as_raw_fd(),
         class = field::display(C::CLASS),
     ))]
     pub fn new(dev: &TegraDRM) -> io::Result<Self> {
@@ -90,6 +85,11 @@ impl<C: host1x_client::Client> Channel<C> {
         let mut buf = vec![MaybeUninit::uninit(); seq.words().len()];
         let buf = seq.write_to_slice(&mut buf[..]);
 
+        // Safety: the handles are only passed to the submit ioctl, which is how this crate
+        // waits for (in) and signals (out) the syncobjs.
+        let syncobj_in = syncobj_in.map(|sobj| unsafe { sobj.handle() });
+        let syncobj_out = syncobj_out.map(|sobj| unsafe { sobj.handle() });
+
         let fence = unsafe {
             ioctl::channel_submit(
                 &self.dev,
@@ -98,8 +98,8 @@ impl<C: host1x_client::Client> Channel<C> {
                 1,
                 buf,
                 &relocs,
-                syncobj_in.map(|sobj| sobj.handle()),
-                syncobj_out.map(|sobj| sobj.handle()),
+                syncobj_in,
+                syncobj_out,
             )?
         };
         Ok(fence)
@@ -112,7 +112,7 @@ impl<C: host1x_client::Client> Drop for Channel<C> {
     fn drop(&mut self) {
         let span = debug_span!(
             "drop",
-            dev.fd = self.dev.as_fd().as_raw_fd(),
+            dev.fd = self.dev.as_raw_fd(),
             channel.context = self.context,
             class = C::CLASS.value(),
         );

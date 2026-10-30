@@ -117,6 +117,11 @@ toolchains, and the env vars they need, so no setup is required.
   `unmap()` returns the buffer.
 - `TegraDRM::try_from_fd` checks that the driver name is `"tegra"` and that syncobj is supported.
   Much of the crate's safety argument depends on this check.
+- GEM and syncobj handles owned by the crate's objects live in the DRM fd's namespace, and
+  `drm`/`drm-ffi` have safe APIs to close, signal or export them. So `TegraDRM` must not expose
+  its fd: it implements neither `AsFd` nor the `drm` device traits (use private `as_fd()` or unsafe
+  `drm()`; `AsRawFd` is fine, raw fds need `unsafe` to be used), `try_from_fd` is `unsafe`, and so
+  are raw handle getters like `Syncobj::handle()`.
 
 ## Conventions
 
