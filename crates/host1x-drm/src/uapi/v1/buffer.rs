@@ -159,12 +159,19 @@ impl<T: BufferType> AsMut<[u8]> for GenericBuffer<ReadWrite, T> {
 // Rust currently doesn't have write-only references so we would have use some type of write-only
 // wrapper, perhabs something like https://docs.rs/write_ref/latest/write_ref/ or https://github.com/gfx-rs/wgpu/blob/81eca17db8a92288b866f3baf93498d7b2225de7/wgpu-types/src/write_only.rs
 // would do.
-impl<MM: MappingMode, T: BufferType> host1x_buffer::Buffer for GenericBuffer<MM, T> {
+impl<MM: MappingMode, T: BufferType> host1x_buffer::Layout for GenericBuffer<MM, T> {
     fn size(&self) -> u32 {
         self.size.get()
     }
 }
-impl<MM: MappingMode, F: Format> host1x_buffer::PixelBuffer for GenericBuffer<MM, PixelBuffer<F>> {
+impl<MM: MappingMode, T: BufferType> host1x_buffer::Buffer for GenericBuffer<MM, T> {
+    type Desc = T::Desc;
+
+    fn desc(&self) -> T::Desc {
+        self.typ_dat.desc(self.size)
+    }
+}
+impl<MM: MappingMode, F: Format> host1x_buffer::PixelLayout for GenericBuffer<MM, PixelBuffer<F>> {
     type Format = F;
 
     fn width(&self) -> u32 {
