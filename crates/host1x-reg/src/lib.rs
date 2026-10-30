@@ -52,19 +52,21 @@ macro_rules! __impl_registers {
                 type R = Register;
             }
 
-            pub const unsafe fn for_raw_mapping<C: Client>(mapping: u32, offset: u64, shift: u32) -> Relocatable<'static, Register, ReadWrite, C> {
+            /// # Safety
+            /// See [`Relocatable::for_raw_mapping`].
+            pub const unsafe fn for_raw_mapping<'id, C: Client>(mapping: u32, offset: u64, shift: u32) -> Relocatable<'id, Register, ReadWrite, C> {
                 unsafe { Relocatable::for_raw_mapping(mapping, offset, shift) }
             }
 
-            pub fn read<C: Client>(buf: &impl ReadableBuffer<C>) -> Relocatable<'_, Register, ReadOnly, C> {
+            pub fn read<'id, C: Client>(buf: &impl ReadableBuffer<'id, C>) -> Relocatable<'id, Register, ReadOnly, C> {
                 Relocatable::read(buf)
             }
 
-            pub fn write<C: Client>(buf: &mut impl WritableBuffer<C>) -> Relocatable<'_, Register, WriteOnly, C> {
+            pub fn write<'id, C: Client>(buf: &mut impl WritableBuffer<'id, C>) -> Relocatable<'id, Register, WriteOnly, C> {
                 Relocatable::write(buf)
             }
 
-            pub fn new<C: Client>(buf: &mut (impl ReadableBuffer<C> + WritableBuffer<C>)) -> Relocatable<'_, Register, ReadWrite, C> {
+            pub fn new<'id, C: Client>(buf: &mut (impl ReadableBuffer<'id, C> + WritableBuffer<'id, C>)) -> Relocatable<'id, Register, ReadWrite, C> {
                 Relocatable::new(buf)
             }
         }

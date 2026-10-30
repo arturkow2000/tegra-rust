@@ -3,6 +3,7 @@ use std::{
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
     os::fd::{AsFd, AsRawFd},
+    ptr,
 };
 
 use crate::{
@@ -13,10 +14,8 @@ use crate::{
 
 use super::Channel;
 use colorspace::Format;
-use host1x_buffer::{
-    Buffer, MappedBuffer, PixelBuffer, ReadableBuffer, WritableBuffer,
-    access::{Readable, Writable},
-};
+use host1x_buffer::{Buffer, Layout, PixelLayout};
+use host1x_core::job::{MappedTo, Mapping};
 
 #[derive(Debug)]
 pub struct BufferMapping<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
@@ -46,6 +45,11 @@ impl<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
             }),
             Err(error) => Err(error),
         }
+    }
+
+    /// Opaque identifier of the mapping, valid within the channel.
+    pub fn mapping_id(&self) -> u32 {
+        *MM::get_handle_ref(&self.mapping_id)
     }
 
     pub fn buffer(&self) -> &GenericBuffer<CMM, T> {
@@ -98,14 +102,23 @@ impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Dere
         &mut self.buffer
     }
 }
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Buffer
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Layout
     for BufferMapping<'_, C, T, CMM, MM>
 {
     fn size(&self) -> u32 {
         self.buffer.size()
     }
 }
-impl<C: host1x_client::Client, CMM: MappingMode, MM: Mapped, F: Format> PixelBuffer
+impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Buffer
+    for BufferMapping<'_, C, T, CMM, MM>
+{
+    type Desc = T::Desc;
+
+    fn desc(&self) -> T::Desc {
+        self.buffer.desc()
+    }
+}
+impl<C: host1x_client::Client, CMM: MappingMode, MM: Mapped, F: Format> PixelLayout
     for BufferMapping<'_, C, crate::buffer::PixelBuffer<F>, CMM, MM>
 {
     type Format = F;
@@ -122,18 +135,25 @@ impl<C: host1x_client::Client, CMM: MappingMode, MM: Mapped, F: Format> PixelBuf
         self.buffer.stride()
     }
 }
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> MappedBuffer<C>
+// Safety:
+// - mapping lives as long as BufferMapping does.
+// - description is taken from the buffer itself.
+// - when moved into the job, CPU access is possible only through BufferMapping itself.
+unsafe impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Mapping
     for BufferMapping<'_, C, T, CMM, MM>
 {
+    type Client = C;
+    type Access = MM;
+
     fn mapping_id(&self) -> u32 {
         *MM::get_handle_ref(&self.mapping_id)
     }
 }
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped + Readable>
-    ReadableBuffer<C> for BufferMapping<'_, C, T, CMM, MM>
+// Safety: mapping has been created on self.channel.
+unsafe impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
+    MappedTo<Channel<C>> for BufferMapping<'_, C, T, CMM, MM>
 {
-}
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped + Writable>
-    WritableBuffer<C> for BufferMapping<'_, C, T, CMM, MM>
-{
+    fn is_mapped_to(&self, channel: &Channel<C>) -> bool {
+        ptr::eq(self.channel, channel)
+    }
 }
