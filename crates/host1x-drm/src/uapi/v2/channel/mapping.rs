@@ -14,7 +14,10 @@ use crate::{
 
 use super::Channel;
 use colorspace::Format;
-use host1x_buffer::{Buffer, Layout, PixelLayout};
+use host1x_buffer::{
+    Buffer, Layout, PixelLayout,
+    access::{ReadWrite, Readable},
+};
 use host1x_core::job::{MappedTo, Mapping};
 
 #[derive(Debug)]
@@ -52,12 +55,10 @@ impl<'a, C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped>
         *MM::get_handle_ref(&self.mapping_id)
     }
 
+    // There is deliberately no `buffer_mut()`: with `&mut GenericBuffer` the buffer could be
+    // swapped out of the mapping, which then would no longer describe the mapped memory.
     pub fn buffer(&self) -> &GenericBuffer<CMM, T> {
         &self.buffer
-    }
-
-    pub fn buffer_mut(&mut self) -> &mut GenericBuffer<CMM, T> {
-        &mut self.buffer
     }
 
     /// Unmap buffer from the channel.
@@ -82,24 +83,26 @@ impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Drop
         r.unwrap();
     }
 }
-// Allow dereference into inner buffer, this way may still read/write the buffer from CPU,
+// Allow dereference into buffer contents, this way may still read/write the buffer from CPU,
 // even while the buffer is mapped to Host1x. This is safe, because the GPU won't actually
 // touch our data unless a job is running. Other APIs are responsible for preventing
 // racy access to same data.
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Deref
+//
+// Only the bytes are exposed, not the inner buffer (see `buffer()`).
+impl<C: host1x_client::Client, T: BufferType, CMM: Mapped + Readable, MM: Mapped> Deref
     for BufferMapping<'_, C, T, CMM, MM>
 {
-    type Target = GenericBuffer<CMM, T>;
+    type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
-        &self.buffer
+        &self.buffer[..]
     }
 }
-impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> DerefMut
-    for BufferMapping<'_, C, T, CMM, MM>
+impl<C: host1x_client::Client, T: BufferType, MM: Mapped> DerefMut
+    for BufferMapping<'_, C, T, ReadWrite, MM>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.buffer
+        &mut self.buffer[..]
     }
 }
 impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Layout
