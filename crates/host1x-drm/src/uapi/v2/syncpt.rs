@@ -1,8 +1,4 @@
-use std::{
-    io,
-    os::fd::{AsFd, AsRawFd},
-    time::Duration,
-};
+use std::{io, os::fd::AsRawFd, time::Duration};
 
 use getset::Getters;
 use rustix::time::{ClockId, clock_gettime};
@@ -26,7 +22,7 @@ impl SyncPoint {
     /// to permanently starve all other DRM clients by allocating all syncpoints
     /// for ourselves.
     #[instrument(skip(dev), fields(
-        dev = dev.as_fd().as_raw_fd()
+        dev = dev.as_raw_fd()
     ))]
     pub fn alloc(dev: &TegraDRM) -> io::Result<Self> {
         let handle = ioctl::syncpt_alloc(dev)
