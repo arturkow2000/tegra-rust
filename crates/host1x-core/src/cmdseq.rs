@@ -7,13 +7,6 @@ use host1x_reg::reloc::Relocation;
 use snafu::{Snafu, ensure};
 use zerocopy::little_endian::U32 as U32LE;
 
-mod p {
-    pub trait TargetSlicePriv<'a> {
-        fn as_uninit_u32_slice_mut(&mut self) -> &mut [super::MaybeUninit<u32>];
-        unsafe fn assume_init_u32_slice(self, n: usize) -> &'a [u32];
-    }
-}
-
 /// Slice too small error.
 #[derive(Debug, Snafu, Clone, Copy, PartialEq, Eq)]
 #[snafu(display("buffer is too small, need {needed} more 32-bit words of capacity"))]
@@ -21,13 +14,26 @@ pub struct BufferTooSmallError {
     pub needed: NonZeroUsize,
 }
 
+// Methods of public trait in private module are still callable.
+// make pub(crate), use private_bounds below.
+pub(crate) trait TargetSlicePriv<'a> {
+    /// # Safety
+    /// Caller must write only initialized values to the returned slice, it may alias
+    /// initialized memory (`&mut [u32]`).
+    unsafe fn as_uninit_u32_slice_mut(&mut self) -> &mut [MaybeUninit<u32>];
+    unsafe fn assume_init_u32_slice(self, n: usize) -> &'a [u32];
+}
+
 /// A slice for storing generated command stream.
 ///
 /// This trait unifies `&mut [u32]` and `&mut [MaybeUninit<u32>]`.
-pub trait TargetSlice<'a>: p::TargetSlicePriv<'a> {}
-impl<'a> p::TargetSlicePriv<'a> for &'a mut [u32] {
-    fn as_uninit_u32_slice_mut(&mut self) -> &mut [MaybeUninit<u32>] {
-        // Safety: MaybeUninit<T> is guaranteed to have same layout as T
+#[expect(private_bounds, reason = "sealed, see `TargetSlicePriv`")]
+pub trait TargetSlice<'a>: TargetSlicePriv<'a> {}
+impl<'a> TargetSlicePriv<'a> for &'a mut [u32] {
+    unsafe fn as_uninit_u32_slice_mut(&mut self) -> &mut [MaybeUninit<u32>] {
+        // Safety:
+        // - MaybeUninit<T> is guaranteed to have same layout as T
+        // - caller must write only initialized values
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr() as *mut MaybeUninit<u32>, self.len()) }
     }
 
@@ -38,8 +44,8 @@ impl<'a> p::TargetSlicePriv<'a> for &'a mut [u32] {
     }
 }
 impl<'a> TargetSlice<'a> for &'a mut [u32] {}
-impl<'a> p::TargetSlicePriv<'a> for &'a mut [MaybeUninit<u32>] {
-    fn as_uninit_u32_slice_mut(&mut self) -> &mut [MaybeUninit<u32>] {
+impl<'a> TargetSlicePriv<'a> for &'a mut [MaybeUninit<u32>] {
+    unsafe fn as_uninit_u32_slice_mut(&mut self) -> &mut [MaybeUninit<u32>] {
         self
     }
 
@@ -72,7 +78,8 @@ macro_rules! impl_command_sequence {
             const N_RELOCS: usize = count_relocations!($($C),+);
 
             fn try_write_to_slice<'target>(&self, mut dest: impl TargetSlice<'target>) -> Result<ValidRawCommandArray<'target>, BufferTooSmallError> {
-                let uninit = dest.as_uninit_u32_slice_mut();
+                // Safety: only initialized words are written below.
+                let uninit = unsafe { dest.as_uninit_u32_slice_mut() };
                 ensure!(uninit.len() >= Self::N_WORDS, BufferTooSmallSnafu { needed: NonZeroUsize::new(Self::N_WORDS - uninit.len()).unwrap() });
 
                 let mut off = 0;
@@ -204,7 +211,8 @@ pub unsafe trait CommandSequence<C: Client> {
         &self,
         mut dest: impl TargetSlice<'target>,
     ) -> Result<ValidRawCommandArray<'target>, BufferTooSmallError> {
-        let uninit = dest.as_uninit_u32_slice_mut();
+        // Safety: only initialized words are written below.
+        let uninit = unsafe { dest.as_uninit_u32_slice_mut() };
         ensure!(
             uninit.len() >= Self::N_WORDS,
             BufferTooSmallSnafu {
