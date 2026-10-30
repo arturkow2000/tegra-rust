@@ -58,7 +58,8 @@ impl<'id, R: RegisterLongName, M, C: Client> Relocatable<'id, R, M, C> {
 impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, ReadOnly, C> {
     /// Create relocatable address for reading from the buffer.
     pub fn read(buf: &impl ReadableBuffer<'id, C>) -> Self {
-        // Safety: the buffer carries the 'id brand.
+        // Safety: `MappedBuffer` contract guarantees that the mapping belongs
+        // to the job branded with 'id.
         unsafe { Self::for_raw_mapping(buf.mapping_id(), 0, 0) }
     }
 }
@@ -66,7 +67,8 @@ impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, ReadOnly, C> {
 impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, WriteOnly, C> {
     /// Create relocatable address for writing to the buffer.
     pub fn write(buf: &mut impl WritableBuffer<'id, C>) -> Self {
-        // Safety: the buffer carries the 'id brand.
+        // Safety: `MappedBuffer` contract guarantees that the mapping belongs
+        // to the job branded with 'id.
         unsafe { Self::for_raw_mapping(buf.mapping_id(), 0, 0) }
     }
 }
@@ -76,7 +78,8 @@ impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, ReadWrite, C> {
 
     /// Create relocatable address for reading and writing the buffer.
     pub fn new(buf: &mut (impl ReadableBuffer<'id, C> + WritableBuffer<'id, C>)) -> Self {
-        // Safety: the buffer carries the 'id brand.
+        // Safety: `MappedBuffer` contract guarantees that the mapping belongs
+        // to the job branded with 'id.
         unsafe { Self::for_raw_mapping(buf.mapping_id(), 0, 0) }
     }
 }

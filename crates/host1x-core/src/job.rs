@@ -61,8 +61,8 @@ impl<'id, C: Client, L, A: Access> Handle<'id, C, L, A> {
     ///
     /// # Safety
     /// `mapping` must be a valid mapping ID of a buffer owned by the job that
-    /// issued `brand`. The mapping must allow access requested by `A`, and `desc`
-    /// must describe the buffer accurately.
+    /// issued `brand`, mapped into address space of `C`. The mapping must allow
+    /// access requested by `A`, and `desc` must describe the buffer accurately.
     pub unsafe fn new(brand: &Brand<'id>, mapping: u32, desc: L) -> Self {
         Self {
             mapping,
@@ -107,13 +107,24 @@ impl<C: Client, L: Layout + Copy, A: Access> Buffer for Handle<'_, C, L, A> {
         self.desc
     }
 }
-impl<'id, C: Client, L: Layout + Copy, A: Access> MappedBuffer<'id, C> for Handle<'id, C, L, A> {
+// Safety: guaranteed by `Handle::new` contract, layout is taken from `desc`.
+unsafe impl<'id, C: Client, L: Layout + Copy, A: Access> MappedBuffer<'id, C>
+    for Handle<'id, C, L, A>
+{
     fn mapping_id(&self) -> u32 {
         self.mapping
     }
 }
-impl<'id, C: Client, L: Layout + Copy, A: Readable> ReadableBuffer<'id, C> for Handle<'id, C, L, A> {}
-impl<'id, C: Client, L: Layout + Copy, A: Writable> WritableBuffer<'id, C> for Handle<'id, C, L, A> {}
+// Safety: `Handle::new` requires the mapping to allow access requested by `A`.
+unsafe impl<'id, C: Client, L: Layout + Copy, A: Readable> ReadableBuffer<'id, C>
+    for Handle<'id, C, L, A>
+{
+}
+// Safety: `Handle::new` requires the mapping to allow access requested by `A`.
+unsafe impl<'id, C: Client, L: Layout + Copy, A: Writable> WritableBuffer<'id, C>
+    for Handle<'id, C, L, A>
+{
+}
 
 /// A buffer mapped into address space of a Host1x client, which can be moved
 /// into a [`Job`].

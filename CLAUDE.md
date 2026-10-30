@@ -79,7 +79,8 @@ toolchains, and the env vars they need, so no setup is required.
    deliberately not `Import`, so a job always owns at least one buffer) into the job, and
    passes `Handle<'id, C, Layout, Access>`s to the pipeline. Handles are branded with a unique invariant
    lifetime from `generativity`. Only handles implement `MappedBuffer` / `ReadableBuffer` /
-   `WritableBuffer`, so the CPU can't access a buffer while the GPU uses it. Handles are linear
+   `WritableBuffer`, so the CPU can't access a buffer while the GPU uses it. These are `unsafe`
+   traits: tasks trust their mapping ID and layout to program the GPU. Handles are linear
    (not `Copy` / `Clone`).
 5. **Pipelines** (sealed `Pipeline` trait): a pipeline is a closure `FnOnce(In) -> impl Task<'id>`, a
    tuple of pipelines run in order (they can be nested, up to 16 elements per tuple). There is no
