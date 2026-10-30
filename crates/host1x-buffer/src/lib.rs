@@ -12,16 +12,30 @@ pub mod fmt;
 /// `'id` is a brand identifying the job (see `host1x_core::job`) that owns
 /// the buffer for the duration of GPU work. Buffers are never branded by
 /// themselves, only by GPU-side handles created by the job.
-pub trait MappedBuffer<'id, C: host1x_client::Client>: Buffer {
+///
+/// # Safety
+/// Tasks emit relocations and program the GPU based on this trait, so
+/// implementors must ensure that:
+/// - [`MappedBuffer::mapping_id`] returns ID of a mapping into address space
+///   of `C`, of a buffer owned by the job branded with `'id`.
+/// - [`Layout`], [`Buffer::desc`] and, if implemented, [`PixelLayout`]
+///   describe the mapped buffer accurately.
+pub unsafe trait MappedBuffer<'id, C: host1x_client::Client>: Buffer {
     /// Opaque identifier for the mapping. Used for relocations.
     fn mapping_id(&self) -> u32;
 }
 
 /// A buffer that is readable by given Host1x client.
-pub trait ReadableBuffer<'id, C: host1x_client::Client>: MappedBuffer<'id, C> {}
+///
+/// # Safety
+/// The mapping must allow `C` to read the buffer.
+pub unsafe trait ReadableBuffer<'id, C: host1x_client::Client>: MappedBuffer<'id, C> {}
 
 /// A buffer that is writable by given Host1x client.
-pub trait WritableBuffer<'id, C: host1x_client::Client>: MappedBuffer<'id, C> {}
+///
+/// # Safety
+/// The mapping must allow `C` to write the buffer.
+pub unsafe trait WritableBuffer<'id, C: host1x_client::Client>: MappedBuffer<'id, C> {}
 
 /// Shape of a buffer: how its content is organized in memory.
 ///
@@ -90,13 +104,17 @@ impl<B: Buffer + ?Sized> Buffer for &B {
         (**self).desc()
     }
 }
-impl<'id, C: host1x_client::Client, B: MappedBuffer<'id, C> + ?Sized> MappedBuffer<'id, C> for &B {
+// Safety: delegates to `B`, including the layout.
+unsafe impl<'id, C: host1x_client::Client, B: MappedBuffer<'id, C> + ?Sized> MappedBuffer<'id, C>
+    for &B
+{
     fn mapping_id(&self) -> u32 {
         (**self).mapping_id()
     }
 }
-impl<'id, C: host1x_client::Client, B: ReadableBuffer<'id, C> + ?Sized> ReadableBuffer<'id, C>
-    for &B
+// Safety: delegates to `B`.
+unsafe impl<'id, C: host1x_client::Client, B: ReadableBuffer<'id, C> + ?Sized>
+    ReadableBuffer<'id, C> for &B
 {
 }
 
