@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 
+use getset::Getters;
 use rustix::time::{ClockId, clock_gettime};
 use tracing::field;
 
@@ -11,8 +12,9 @@ use crate::device::TegraDRM;
 
 use super::ioctl;
 
-#[derive(Debug)]
+#[derive(Debug, Getters)]
 pub struct SyncPoint {
+    #[get = "pub"]
     dev: TegraDRM,
     handle: u32,
 }

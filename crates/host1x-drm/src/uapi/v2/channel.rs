@@ -5,6 +5,7 @@ use std::{
     os::fd::{AsFd, AsRawFd},
 };
 
+use getset::Getters;
 use host1x_buffer::access::ReadWrite;
 use host1x_core::cmdseq::CommandSequence;
 use tracing::field;
@@ -24,8 +25,9 @@ use super::ioctl;
 
 pub mod mapping;
 
-#[derive(Debug)]
+#[derive(Debug, Getters)]
 pub struct Channel<C: host1x_client::Client> {
+    #[get = "pub"]
     dev: TegraDRM,
     context: u32,
     _client: PhantomData<C>,

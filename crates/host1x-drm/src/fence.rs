@@ -7,14 +7,15 @@ use std::{
 
 use drm::control::{Device as _, syncobj};
 use futures_util::FutureExt;
-use getset::CopyGetters;
+use getset::{CopyGetters, Getters};
 use host1x_core::queue::Fence;
 use pin_project::pin_project;
 
 use crate::device::TegraDRM;
 
-#[derive(Debug, CopyGetters)]
+#[derive(Debug, Getters, CopyGetters)]
 pub struct Syncobj {
+    #[get = "pub"]
     dev: TegraDRM,
     #[get_copy = "pub"]
     handle: syncobj::Handle,
