@@ -1,5 +1,6 @@
 use std::{
     io,
+    os::fd::{AsFd, AsRawFd},
     pin::Pin,
     task::{Context, Poll, ready},
 };
@@ -29,8 +30,14 @@ impl<C: Client> Queue<C> {
         &self.channel
     }
 
+    /// # Panics
+    /// If `channel` and `syncpoint` were created on different device instances.
     #[inline(always)]
     pub fn new(channel: Channel<C>, syncpoint: SyncPoint) -> Self {
+        assert!(
+            channel.dev().as_fd().as_raw_fd() == syncpoint.dev().as_fd().as_raw_fd(),
+            "channel and syncpoint must be created on the same device instance"
+        );
         Self { channel, syncpoint }
     }
 }
@@ -42,12 +49,24 @@ impl<C: Client> host1x_core::queue::Queue<C> for Queue<C> {
     type Fence = Syncobj;
     type PendingTask<'p, B> = Pending<'p, B>;
 
+    /// See [`host1x_core::queue::Queue::submit`].
+    ///
+    /// # Panics
+    /// Also if `fence` was created on a different device instance than the queue.
     #[inline(always)]
     fn submit<'r, B: MappedTo<Channel<C>>, S: CommandSequence<C>>(
         &'r self,
         fence: &'r mut Self::Fence,
         job: Job<'_, C, B, S>,
     ) -> Self::SubmitFuture<'r, B, S> {
+        // Syncobj handles are local to the device instance. With a fence from another
+        // instance the kernel would signal an unrelated syncobj, while we would wait
+        // on the fence and give the buffers back before the GPU is done with them.
+        assert!(
+            fence.dev().as_fd().as_raw_fd() == self.channel().dev().as_fd().as_raw_fd(),
+            "fence must be created on the same device instance as the queue"
+        );
+
         // Safety: commands are submitted only to self.channel, buffers are kept
         // by Submit and then Pending, until the fence signals completion.
         let (buffers, seq) = unsafe { job.into_parts(self.channel()) };
