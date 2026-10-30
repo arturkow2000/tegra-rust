@@ -1,5 +1,6 @@
 use crate::{Encoding, Rgb, RgbAlpha};
 
+#[derive(Clone, Copy)]
 pub struct Color<E: Encoding + ?Sized>(pub(crate) E::Storage);
 impl<E: Rgb> Color<E> {
     // TODO: make this const
@@ -43,16 +44,6 @@ impl<E: Rgb> Color<E> {
         E::set_b(&mut self.0, b);
     }
 }
-
-impl<E: Encoding + ?Sized> Clone for Color<E>
-where
-    E::Storage: Clone,
-{
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-impl<E: Encoding + ?Sized> Copy for Color<E> where E::Storage: Copy {}
 
 impl<E: RgbAlpha> Color<E> {
     // TODO: make this const

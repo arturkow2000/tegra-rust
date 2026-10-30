@@ -35,7 +35,7 @@ impl BitsPerPixel {
 }
 
 /// Pixel encoding, defines what channels form color of a pixel and bitsize of each channel value.
-pub trait Encoding: sealed::SealedEncoding {
+pub trait Encoding: Copy + sealed::SealedEncoding {
     type Storage: Copy;
     const BPP: BitsPerPixel;
 
@@ -87,7 +87,7 @@ pub trait RgbAlpha: Rgb {
 /// That is:
 /// - defines pixel value size and alignment.
 /// - assigns each channel plane number, byte, and bit-offset.
-pub trait Layout: sealed::SealedLayout {
+pub trait Layout: Copy + sealed::SealedLayout {
     /// Total number of planes used.
     ///
     /// Linear layouts have one plane.
@@ -263,6 +263,7 @@ impl<
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct LinearRgb<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize> {}
 impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize> sealed::SealedLayout
     for LinearRgb<R_OFFSET, G_OFFSET, B_OFFSET>
@@ -285,6 +286,7 @@ impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize> RgbLay
     const B_PLANE: usize = 0;
 }
 
+#[derive(Clone, Copy)]
 pub struct LinearRgba<
     const R_OFFSET: usize,
     const G_OFFSET: usize,
@@ -318,7 +320,7 @@ impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const 
     const A_PLANE: usize = 0;
 }
 
-pub trait Format: Debug {
+pub trait Format: Debug + Copy {
     /// Pixel value encoding.
     type Encoding: Encoding;
 
