@@ -552,8 +552,11 @@ unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: SetCLArgs<C>
     fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
         // Safety:
         // - first_word is an U32LE, followed by an array [U32LE; N]
-        // - self has #[repr(C)]
-        unsafe { core::slice::from_raw_parts(&self.first_word as *const U32LE, N + 1) }
+        // - self has #[repr(C)], first_word is at offset 0 and U32LE has alignment of 1, so
+        //   there is no padding before args
+        // - the pointer is derived from self, not from &self.first_word, so it may access
+        //   args too
+        unsafe { core::slice::from_raw_parts(core::ptr::from_ref(self).cast::<U32LE>(), N + 1) }
             .iter()
             .copied()
     }
@@ -671,8 +674,11 @@ unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: WriteIncrArg
     fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
         // Safety:
         // - first_word is an U32LE, followed by an array [U32LE; N]
-        // - self has #[repr(C)]
-        unsafe { core::slice::from_raw_parts(&self.first_word as *const U32LE, N + 1) }
+        // - self has #[repr(C)], first_word is at offset 0 and U32LE has alignment of 1, so
+        //   there is no padding before args
+        // - the pointer is derived from self, not from &self.first_word, so it may access
+        //   args too
+        unsafe { core::slice::from_raw_parts(core::ptr::from_ref(self).cast::<U32LE>(), N + 1) }
             .iter()
             .copied()
     }
@@ -749,8 +755,11 @@ unsafe impl<const N: usize, C: Client, Reg: Register<C>> CommandSequence<C>
     fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
         // Safety:
         // - first_word is an U32LE, followed by an array [U32LE; N]
-        // - self has #[repr(C)]
-        unsafe { core::slice::from_raw_parts(&self.first_word as *const U32LE, N + 1) }
+        // - self has #[repr(C)], first_word is at offset 0 and U32LE has alignment of 1, so
+        //   there is no padding before args
+        // - the pointer is derived from self, not from &self.first_word, so it may access
+        //   args too
+        unsafe { core::slice::from_raw_parts(core::ptr::from_ref(self).cast::<U32LE>(), N + 1) }
             .iter()
             .copied()
     }
@@ -884,8 +893,11 @@ unsafe impl<const N: usize, const N_RELOCS: usize, C: Client, Args: MaskArgs<C>>
     fn words(&self) -> impl ExactSizeIterator<Item = U32LE> {
         // Safety:
         // - first_word is an U32LE, followed by an array [U32LE; N]
-        // - self has #[repr(C)]
-        unsafe { core::slice::from_raw_parts(&self.first_word as *const U32LE, N + 1) }
+        // - self has #[repr(C)], first_word is at offset 0 and U32LE has alignment of 1, so
+        //   there is no padding before args
+        // - the pointer is derived from self, not from &self.first_word, so it may access
+        //   args too
+        unsafe { core::slice::from_raw_parts(core::ptr::from_ref(self).cast::<U32LE>(), N + 1) }
             .iter()
             .copied()
     }
