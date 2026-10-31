@@ -10,6 +10,7 @@ use futures_util::FutureExt;
 use getset::Getters;
 use host1x_core::queue::Fence;
 use pin_project::pin_project;
+use tracing::field;
 
 use crate::device::TegraDRM;
 
@@ -23,7 +24,9 @@ impl Syncobj {
     #[instrument(skip(dev), fields(dev = dev.as_raw_fd()))]
     pub fn new(dev: &TegraDRM) -> io::Result<Self> {
         // Safety: only creates a new syncobj, which is then owned by self.
-        let handle = unsafe { dev.drm() }.create_syncobj(false).unwrap();
+        let handle = unsafe { dev.drm() }
+            .create_syncobj(false)
+            .inspect_err(|error| error!(error = field::display(error), "syncobj create fail"))?;
         let handle_raw: u32 = handle.into();
 
         debug!(syncobj.handle = handle_raw, "syncobj created");
