@@ -3,7 +3,7 @@ extern crate tracing;
 
 use std::num::NonZeroU32;
 
-use colorspace::{Bgra8888, color::Color};
+use colorspace::{Bgra8888, NoAlpha, RgbGeneric, color::Color};
 use embedded_graphics::{
     prelude::{Point, Size},
     primitives::Rectangle,
@@ -48,7 +48,7 @@ async fn main() {
             |buf| {
                 gr2d::fill_rect(
                     buf,
-                    Color::rgb(0, 255, 0),
+                    Color::<RgbGeneric<u8, u8, u8, NoAlpha>>::rgb(0, 255, 0),
                     Rectangle {
                         top_left: Point::new(10, 10),
                         size: Size::new(100, 100),
