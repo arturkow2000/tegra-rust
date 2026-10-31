@@ -76,7 +76,11 @@ impl Future for SyncobjWait<'_> {
                     let handle = proj.syncobj.handle;
                     // FIXME: not scoped, could possibly execute after handle has been destroyed
                     *proj.state = WaitState::JobSpawned(tokio::task::spawn_blocking(move || {
-                        dev.syncobj_wait(&[handle], -1, true, false)
+                        // The timeout is an absolute CLOCK_MONOTONIC time, any time in the past
+                        // (such as -1) makes the kernel only poll the syncobj once.
+                        let timeout = i64::MAX;
+                        // Safety: waiting doesn't change the state of the syncobj.
+                        dev.syncobj_wait(&[handle], timeout, true, false)
                     }));
                 }
                 WaitState::JobSpawned(ref mut handle) => {
