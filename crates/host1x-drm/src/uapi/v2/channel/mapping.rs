@@ -79,6 +79,7 @@ impl<C: host1x_client::Client, T: BufferType, CMM: MappingMode, MM: Mapped> Drop
     fn drop(&mut self) {
         let mapping_id = unsafe { MM::get_handle(ManuallyDrop::take(&mut self.mapping_id)) };
         let r = ioctl::channel_unmap(&self.channel.dev, self.channel.context, mapping_id);
+        unsafe { ManuallyDrop::drop(&mut self.buffer) };
         #[cfg(debug_assertions)]
         r.unwrap();
     }
