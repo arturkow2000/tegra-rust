@@ -1,6 +1,14 @@
+//! Pixel encodings: which channels a color has and how many bits each takes.
+//!
+//! Unlike [formats](crate::Format), encodings say nothing about memory layout, so
+//! e.g. [`Rgba8`] is shared by all 8-bit RGBA formats regardless of channel order.
+
 use core::marker::PhantomData;
 
-use arbitrary_int::traits::UnsignedInteger;
+use arbitrary_int::{
+    prelude::{u5, u6},
+    traits::UnsignedInteger,
+};
 use bytemuck::{AnyBitPattern, Pod};
 
 use crate::color::Color;
@@ -243,5 +251,29 @@ impl<
 
     fn set_a(stor: &mut Self::Storage, a: Self::A) {
         stor.3 = a;
+    }
+}
+
+/// 8-bit RGB without alpha.
+pub type Rgb8 = RgbGeneric<u8, u8, u8, NoAlpha>;
+
+/// 8-bit RGB with 8-bit alpha.
+pub type Rgba8 = RgbGeneric<u8, u8, u8, u8>;
+
+/// RGB with 5-bit red, 6-bit green and 5-bit blue, without alpha.
+pub type Rgb565 = RgbGeneric<u5, u6, u5, NoAlpha>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Format, color::Color};
+
+    /// Aliases must name the same encodings formats use.
+    #[test]
+    fn aliases_match_formats() {
+        let _: Color<Rgb8> = <crate::Rgb888 as Format>::Encoding::BLACK;
+        let _: Color<Rgb8> = <crate::Xrgb8888 as Format>::Encoding::BLACK;
+        let _: Color<Rgba8> = <crate::Argb8888 as Format>::Encoding::BLACK;
+        let _: Color<Rgb565> = <crate::Rgb565 as Format>::Encoding::BLACK;
     }
 }

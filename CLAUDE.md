@@ -45,7 +45,7 @@ toolchains, and the env vars they need, so no setup is required.
 | Crate | `no_std` | Purpose |
 |---|---|---|
 | [host1x-client](crates/host1x-client/) | yes | `Client` trait: a Host1x hardware block identified by a 10-bit `CLASS` ID. Used as a type-level tag everywhere. |
-| [colorspace](crates/colorspace/) | yes | Pixel formats (`Format`, `Encoding`, `Layout`, e.g. `Rgba8888`, `Bgra8888`), typed `Color<E>`, get/set pixel helpers, drm-fourcc mapping. |
+| [colorspace](crates/colorspace/) | yes | Pixel formats (`Format`, `Encoding`, `Layout`, e.g. `Rgba8888`, `Bgra8888`), typed `Color<E>`, get/set pixel helpers, drm-fourcc mapping. Layout-independent encodings live in `encoding` (aliases `encoding::{Rgb8, Rgba8, Rgb565}`). Formats and the existing encoding items are re-exported at the root, the aliases are not, so they don't clash with format names. |
 | [host1x-buffer](crates/host1x-buffer/) | yes | Buffer traits: `Buffer`, `PixelBuffer`, and the per-client `MappedBuffer<C>` / `ReadableBuffer<C>` / `WritableBuffer<C>`. |
 | [host1x-reg](crates/host1x-reg/) | yes | `impl_registers!` macro on top of `tock-registers`; `Register<C>` / `RegisterValue<C>` traits; `reloc::Relocatable` for registers that hold buffer addresses; `class` = Host1x class methods (`INCR_SYNCPT`). |
 | [gr2d-reg](crates/gr2d-reg/) | yes | GR2D register definitions (class `0x51`) and `gr2d_reg::Client`. |
