@@ -91,7 +91,8 @@ impl<T: BufferType> GenericBuffer<Unmapped, T> {
             Ok(ptr) => {
                 let this = ManuallyDrop::new(self);
                 Ok(GenericBuffer {
-                    dev: this.dev.clone(),
+                    // Safety: `this` is never dropped, so `dev` is moved out of it exactly once.
+                    dev: unsafe { ptr::read(&this.dev) },
                     handle: this.handle,
                     size: this.size,
                     ptr: ManuallyDrop::new(ptr),
@@ -108,7 +109,8 @@ impl<T: BufferType> GenericBuffer<Unmapped, T> {
             Ok(ptr) => {
                 let this = ManuallyDrop::new(self);
                 Ok(GenericBuffer {
-                    dev: this.dev.clone(),
+                    // Safety: `this` is never dropped, so `dev` is moved out of it exactly once.
+                    dev: unsafe { ptr::read(&this.dev) },
                     handle: this.handle,
                     size: this.size,
                     ptr: ManuallyDrop::new(ptr),
