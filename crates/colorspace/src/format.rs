@@ -406,15 +406,15 @@ pub trait Format: Debug + Copy {
 }
 
 macro_rules! impl_format_linear {
-    (@impl $ty:ident, $kind:ident, $enc:ty, $layout:ty) => {
+    (@impl $ty:ident = $fcc:ident, $kind:ident, $enc:ty, $layout:ty) => {
         paste! {
-            #[doc = concat!("Maps to [`DrmFourcc::", stringify!($ty), "`].")]
+            #[doc = concat!("Maps to [`DrmFourcc::", stringify!($fcc), "`].")]
             #[derive(Debug, Clone, Copy)]
             pub struct $ty {}
             impl Format for $ty {
                 type Encoding = $enc;
                 type Layout = $layout;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
+                const DRM_FCC: DrmFourcc = DrmFourcc::$fcc;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
                     [<$kind _to_gr2d_reg>]::<Self>(c.0)
@@ -441,53 +441,53 @@ macro_rules! impl_format_linear {
     // Memory order: the first named channel is at the lowest address, which is
     // bit offset 0 of a little-endian word. Channels smaller than a byte (565)
     // follow the same rule, so they are named from the least significant bit.
-    ($ty:ident, rgb = ($r:literal, $g:literal, $b:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgb,
+    ($ty:ident = $fcc:ident, rgb = ($r:literal, $g:literal, $b:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgb,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
             LinearRgb<0, $r, { $r + $g }, { $r + $g + $b }>); }
     };
-    ($ty:ident, bgr = ($b:literal, $g:literal, $r:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgb,
+    ($ty:ident = $fcc:ident, bgr = ($b:literal, $g:literal, $r:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgb,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
             LinearRgb<{ $b + $g }, $b, 0, { $r + $g + $b }>); }
     };
-    ($ty:ident, rgba = ($r:literal, $g:literal, $b:literal, $a:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgba,
+    ($ty:ident = $fcc:ident, rgba = ($r:literal, $g:literal, $b:literal, $a:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgba,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], [<u $a>]>,
             LinearRgba<0, $r, { $r + $g }, { $r + $g + $b }, { $r + $g + $b + $a }>); }
     };
-    ($ty:ident, bgra = ($b:literal, $g:literal, $r:literal, $a:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgba,
+    ($ty:ident = $fcc:ident, bgra = ($b:literal, $g:literal, $r:literal, $a:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgba,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], [<u $a>]>,
             LinearRgba<{ $b + $g }, $b, 0, { $b + $g + $r }, { $r + $g + $b + $a }>); }
     };
-    ($ty:ident, argb = ($a:literal, $r:literal, $g:literal, $b:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgba,
+    ($ty:ident = $fcc:ident, argb = ($a:literal, $r:literal, $g:literal, $b:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgba,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], [<u $a>]>,
             LinearRgba<$a, { $a + $r }, { $a + $r + $g }, 0, { $r + $g + $b + $a }>); }
     };
-    ($ty:ident, abgr = ($a:literal, $b:literal, $g:literal, $r:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgba,
+    ($ty:ident = $fcc:ident, abgr = ($a:literal, $b:literal, $g:literal, $r:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgba,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], [<u $a>]>,
             LinearRgba<{ $a + $b + $g }, { $a + $b }, $a, 0, { $r + $g + $b + $a }>); }
     };
-    ($ty:ident, rgbx = ($r:literal, $g:literal, $b:literal, $x:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgb,
+    ($ty:ident = $fcc:ident, rgbx = ($r:literal, $g:literal, $b:literal, $x:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgb,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
             LinearRgb<0, $r, { $r + $g }, { $r + $g + $b + $x }>); }
     };
-    ($ty:ident, bgrx = ($b:literal, $g:literal, $r:literal, $x:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgb,
+    ($ty:ident = $fcc:ident, bgrx = ($b:literal, $g:literal, $r:literal, $x:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgb,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
             LinearRgb<{ $b + $g }, $b, 0, { $r + $g + $b + $x }>); }
     };
-    ($ty:ident, xrgb = ($x:literal, $r:literal, $g:literal, $b:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgb,
+    ($ty:ident = $fcc:ident, xrgb = ($x:literal, $r:literal, $g:literal, $b:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgb,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
             LinearRgb<$x, { $x + $r }, { $x + $r + $g }, { $r + $g + $b + $x }>); }
     };
-    ($ty:ident, xbgr = ($x:literal, $b:literal, $g:literal, $r:literal)) => {
-        paste! { impl_format_linear!(@impl $ty, rgb,
+    ($ty:ident = $fcc:ident, xbgr = ($x:literal, $b:literal, $g:literal, $r:literal)) => {
+        paste! { impl_format_linear!(@impl $ty = $fcc, rgb,
             RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
             LinearRgb<{ $x + $b + $g }, { $x + $b }, $x, { $r + $g + $b + $x }>); }
     };
@@ -823,18 +823,18 @@ where
     true
 }
 
-impl_format_linear!(Abgr8888, rgba = (8, 8, 8, 8));
-impl_format_linear!(Argb8888, bgra = (8, 8, 8, 8));
-impl_format_linear!(Bgr565, rgb = (5, 6, 5));
-impl_format_linear!(Bgr888, rgb = (8, 8, 8));
-impl_format_linear!(Bgra8888, argb = (8, 8, 8, 8));
-impl_format_linear!(Bgrx8888, xrgb = (8, 8, 8, 8));
-impl_format_linear!(Rgb565, bgr = (5, 6, 5));
-impl_format_linear!(Rgb888, bgr = (8, 8, 8));
-impl_format_linear!(Rgba8888, abgr = (8, 8, 8, 8));
-impl_format_linear!(Rgbx8888, xbgr = (8, 8, 8, 8));
-impl_format_linear!(Xbgr8888, rgbx = (8, 8, 8, 8));
-impl_format_linear!(Xrgb8888, bgrx = (8, 8, 8, 8));
+impl_format_linear!(Abgr8888 = Rgba8888, abgr = (8, 8, 8, 8));
+impl_format_linear!(Argb8888 = Bgra8888, argb = (8, 8, 8, 8));
+impl_format_linear!(Bgr565 = Rgb565, bgr = (5, 6, 5));
+impl_format_linear!(Bgr888 = Rgb888, bgr = (8, 8, 8));
+impl_format_linear!(Bgra8888 = Argb8888, bgra = (8, 8, 8, 8));
+impl_format_linear!(Bgrx8888 = Xrgb8888, bgrx = (8, 8, 8, 8));
+impl_format_linear!(Rgb565 = Bgr565, rgb = (5, 6, 5));
+impl_format_linear!(Rgb888 = Bgr888, rgb = (8, 8, 8));
+impl_format_linear!(Rgba8888 = Abgr8888, rgba = (8, 8, 8, 8));
+impl_format_linear!(Rgbx8888 = Xbgr8888, rgbx = (8, 8, 8, 8));
+impl_format_linear!(Xbgr8888 = Rgbx8888, xbgr = (8, 8, 8, 8));
+impl_format_linear!(Xrgb8888 = Bgrx8888, xrgb = (8, 8, 8, 8));
 
 #[cfg(test)]
 mod tests {
@@ -850,35 +850,30 @@ mod tests {
         buf
     }
 
-    // DRM fourccs are MSB->LSB of a little-endian word, so the last-named channel
-    // lands in byte 0. Alpha defaults to fully opaque (0xff).
-
-    #[test]
-    fn bgra8888_byte_order() {
-        // BGRA8888 in memory is [A, R, G, B].
-        assert_eq!(red_bytes::<Bgra8888>(), [0xff, 0xff, 0x00, 0x00]);
-        let red = Color::<<Bgra8888 as Format>::Encoding>::rgb(255, 0, 0);
-        assert_eq!(Bgra8888::color_to_gr2d_reg(red), 0x0000_ffff);
-    }
-
-    #[test]
-    fn rgba8888_byte_order() {
-        // RGBA8888 in memory is [A, B, G, R].
-        assert_eq!(red_bytes::<Rgba8888>(), [0xff, 0x00, 0x00, 0xff]);
-        let red = Color::<<Rgba8888 as Format>::Encoding>::rgb(255, 0, 0);
-        assert_eq!(Rgba8888::color_to_gr2d_reg(red), 0xff00_00ff);
-    }
+    // Bytes in memory follow the format name. Alpha defaults to fully opaque (0xff).
 
     #[test]
     fn argb8888_byte_order() {
-        // ARGB8888 in memory is [B, G, R, A].
-        assert_eq!(red_bytes::<Argb8888>(), [0x00, 0x00, 0xff, 0xff]);
+        assert_eq!(red_bytes::<Argb8888>(), [0xff, 0xff, 0x00, 0x00]);
+        let red = Color::<<Argb8888 as Format>::Encoding>::rgb(255, 0, 0);
+        assert_eq!(Argb8888::color_to_gr2d_reg(red), 0x0000_ffff);
     }
 
     #[test]
     fn abgr8888_byte_order() {
-        // ABGR8888 in memory is [R, G, B, A].
         assert_eq!(red_bytes::<Abgr8888>(), [0xff, 0x00, 0x00, 0xff]);
+        let red = Color::<<Abgr8888 as Format>::Encoding>::rgb(255, 0, 0);
+        assert_eq!(Abgr8888::color_to_gr2d_reg(red), 0xff00_00ff);
+    }
+
+    #[test]
+    fn bgra8888_byte_order() {
+        assert_eq!(red_bytes::<Bgra8888>(), [0x00, 0x00, 0xff, 0xff]);
+    }
+
+    #[test]
+    fn rgba8888_byte_order() {
+        assert_eq!(red_bytes::<Rgba8888>(), [0xff, 0x00, 0x00, 0xff]);
     }
 
     #[test]
@@ -918,16 +913,18 @@ mod tests {
         v
     }
 
-    /// Parses a name like `Argb8888`, which lists channels from the most
-    /// significant bit, into channel bit offsets.
-    fn parse_name(name: &str) -> Vec<(char, usize)> {
+    /// Parses a name like `Argb8888` into channel bit offsets.
+    ///
+    /// Our names list channels from the least significant bit (memory order),
+    /// [`DrmFourcc`] variant names from the most significant bit.
+    fn parse_name(name: &str, msb_first: bool) -> Vec<(char, usize)> {
         let (chans, bits) = name.split_at(name.find(|c: char| c.is_ascii_digit()).unwrap());
         let v = chans
             .chars()
             .map(|c| c.to_ascii_lowercase())
             .zip(bits.chars().map(|b| b.to_digit(10).unwrap() as usize))
             .collect();
-        offsets(v, true)
+        offsets(v, msb_first)
     }
 
     fn rgb_offsets<F: Format<Layout: RgbLayout>>() -> Vec<(char, usize)> {
@@ -947,26 +944,29 @@ mod tests {
         v
     }
 
-    /// Checks that each format's layout matches its name.
+    /// Checks that each format's layout matches both its own name and the name
+    /// of the DRM fourcc it maps to.
     #[test]
     fn layouts_match_names() {
         macro_rules! check {
-            ($kind:ident $ty:ident) => {{
+            ($kind:ident $ty:ident = $fcc:ident) => {{
                 let actual = paste! { [<$kind _offsets>]::<$ty>() };
-                assert_eq!(parse_name(stringify!($ty)), actual, stringify!($ty));
+                assert_eq!(parse_name(stringify!($ty), false), actual, stringify!($ty));
+                assert_eq!(<$ty>::DRM_FCC, DrmFourcc::$fcc, stringify!($ty));
+                assert_eq!(parse_name(stringify!($fcc), true), actual, stringify!($fcc));
             }};
         }
-        check!(rgba Abgr8888);
-        check!(rgba Argb8888);
-        check!(rgb Bgr565);
-        check!(rgb Bgr888);
-        check!(rgba Bgra8888);
-        check!(rgb Bgrx8888);
-        check!(rgb Rgb565);
-        check!(rgb Rgb888);
-        check!(rgba Rgba8888);
-        check!(rgb Rgbx8888);
-        check!(rgb Xbgr8888);
-        check!(rgb Xrgb8888);
+        check!(rgba Abgr8888 = Rgba8888);
+        check!(rgba Argb8888 = Bgra8888);
+        check!(rgb Bgr565 = Rgb565);
+        check!(rgb Bgr888 = Rgb888);
+        check!(rgba Bgra8888 = Argb8888);
+        check!(rgb Bgrx8888 = Xrgb8888);
+        check!(rgb Rgb565 = Bgr565);
+        check!(rgb Rgb888 = Bgr888);
+        check!(rgba Rgba8888 = Abgr8888);
+        check!(rgb Rgbx8888 = Xbgr8888);
+        check!(rgb Xbgr8888 = Rgbx8888);
+        check!(rgb Xrgb8888 = Bgrx8888);
     }
 }

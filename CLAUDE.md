@@ -45,7 +45,7 @@ toolchains, and the env vars they need, so no setup is required.
 | Crate | `no_std` | Purpose |
 |---|---|---|
 | [host1x-client](crates/host1x-client/) | yes | `Client` trait: a Host1x hardware block identified by a 10-bit `CLASS` ID. Used as a type-level tag everywhere. |
-| [colorspace](crates/colorspace/) | yes | Pixel formats (`Format`, `Encoding`, `Layout`, e.g. `Rgba8888`, `Bgra8888`), typed `Color<E>`, get/set pixel helpers, drm-fourcc mapping. |
+| [colorspace](crates/colorspace/) | yes | Pixel formats (`Format`, `Encoding`, `Layout`, named in memory order, e.g. `Bgra8888`), typed `Color<E>`, get/set pixel helpers, drm-fourcc mapping. |
 | [host1x-buffer](crates/host1x-buffer/) | yes | Buffer traits: `Buffer`, `PixelBuffer`, and the per-client `MappedBuffer<C>` / `ReadableBuffer<C>` / `WritableBuffer<C>`. |
 | [host1x-reg](crates/host1x-reg/) | yes | `impl_registers!` macro on top of `tock-registers`; `Register<C>` / `RegisterValue<C>` traits; `reloc::Relocatable` for registers that hold buffer addresses; `class` = Host1x class methods (`INCR_SYNCPT`). |
 | [gr2d-reg](crates/gr2d-reg/) | yes | GR2D register definitions (class `0x51`) and `gr2d_reg::Client`. |
@@ -53,7 +53,7 @@ toolchains, and the env vars they need, so no setup is required.
 | [gr2d](crates/gr2d/) | yes | High-level GR2D operations as `Task`s: `clear`, `clear_with_color`, `fill_rect` (`fill::Fill`). `Gr2dFormat` maps colorspace formats to SBFMT0 values. |
 | [host1x-drm](crates/host1x-drm/) | no | Linux DRM backend: `device::TegraDRM`, GEM buffers (`uapi::v1::buffer`), Host1x channels / mappings / syncpoints / submit queue (`uapi::v2`), DRM syncobj fences (`fence`). Raw ioctl definitions are in `uapi/*/ioctl.rs`. |
 | [instrumentation](crates/instrumentation/) | no | tracing + Tracy setup (`init()`); `TracingContext::frame()` uploads a pixel buffer to Tracy as a frame image. |
-| [basic-test](crates/basic-test/) | no (bin) | End-to-end smoke test: opens `/dev/dri/card1`, clears a 256×256 BGRA buffer and fills a rect with GR2D, then sends the result to Tracy. |
+| [basic-test](crates/basic-test/) | no (bin) | End-to-end smoke test: opens `/dev/dri/card1`, clears a 256×256 `Argb8888` buffer and fills a rect with GR2D, then sends the result to Tracy. |
 
 ## Core design: how a GPU job flows
 
@@ -146,7 +146,7 @@ toolchains, and the env vars they need, so no setup is required.
 
 ## Known limitations / gotchas
 
-- Only GR2D, and only BGRA8888 and RGBA8888 in `Gr2dFormat`. Only fill and clear are implemented.
+- Only GR2D, and only the four 32-bit RGBA layouts (`Bgra8888`, `Rgba8888`, `Argb8888`, `Abgr8888`) in `Gr2dFormat`. Only fill and clear are implemented.
 - `Submit` does the submit ioctl synchronously inside `poll` (most types are `!Send`).
 - `SyncobjWait`'s blocking job isn't scoped, so it could outlive the syncobj handle (FIXME in [fence.rs](crates/host1x-drm/src/fence.rs)).
 - Relocation `shift` and `buf_offset` exist, but the safe API always uses 0.
