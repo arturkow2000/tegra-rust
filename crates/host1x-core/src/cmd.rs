@@ -494,7 +494,7 @@ impl<const N: usize, const N_RELOCS: usize, C: Client, Args: SetCLArgs<C>>
     // TODO: make this const?
     // at minimum we need https://github.com/rust-lang/rust/issues/92476
     #[inline]
-    pub fn with_raw_class_and_register_write(classid: u10, values: Args) -> Self {
+    fn with_raw_class_and_register_write(classid: u10, values: Args) -> Self {
         // Force evaluation, unused constants are not evaluated, so assertion can't be triggered.
         #[allow(clippy::let_unit_value)]
         let _ = Self::_ASSERT_N_EQ_ARGS_N;
