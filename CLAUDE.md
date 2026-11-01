@@ -22,7 +22,7 @@ toolchains, and the env vars they need, so no setup is required.
   `root@192.168.0.163` over SSH and runs it there with `RUST_LOG=debug`. This needs real hardware.
 - Host tests work for the `no_std`/pure crates:
   ```
-  cargo test -p host1x-core -p colorspace
+  cargo test -p host1x-core -p host1x-reg -p colorspace
   ```
   Most coverage in `host1x-core` is **doctests**, including `compile_fail` ones that check
   that invalid commands are rejected at compile time (E0080 const-eval asserts). Keep
@@ -47,7 +47,7 @@ toolchains, and the env vars they need, so no setup is required.
 | [host1x-client](crates/host1x-client/) | yes | `Client` trait: a Host1x hardware block identified by a 10-bit `CLASS` ID. Used as a type-level tag everywhere. |
 | [colorspace](crates/colorspace/) | yes | Pixel formats (`Format`, `Encoding`, `Layout`, named in memory order, e.g. `Bgra8888`), typed `Color<E>`, get/set pixel helpers, drm-fourcc mapping. |
 | [host1x-buffer](crates/host1x-buffer/) | yes | Buffer traits: `Buffer`, `PixelBuffer`, and the per-client `MappedBuffer<C>` / `ReadableBuffer<C>` / `WritableBuffer<C>`. |
-| [host1x-reg](crates/host1x-reg/) | yes | `impl_registers!` macro on top of `tock-registers`; `Register<C>` / `RegisterValue<C>` traits; `reloc::Relocatable` for registers that hold buffer addresses; `class` = Host1x class methods (`INCR_SYNCPT`). |
+| [host1x-reg](crates/host1x-reg/) | yes | `impl_registers!` macro on top of `tock-registers`; `Register<C>` / `RegisterValue<C>` traits; `reloc::Relocatable` for registers that hold buffer addresses; `class` = Host1x class methods (`INCR_SYNCPT`, an `UNSAFE(true)` register: a stray increment signals job fences early). |
 | [gr2d-reg](crates/gr2d-reg/) | yes | GR2D register definitions (class `0x51`) and `gr2d_reg::Client`. |
 | [host1x-core](crates/host1x-core/) | yes (`std` feature) | Type-safe command stream building (`cmd`: `SetClass`, `Mask`, `WriteIncr`, `WriteNoIncr`), `cmdseq::CommandSequence`, the `task::Task` trait, and backend-agnostic `queue::{Queue, Fence, PendingTask}` traits. |
 | [gr2d](crates/gr2d/) | yes | High-level GR2D operations as `Task`s: `clear`, `clear_with_color`, `fill_rect` (`fill::Fill`). `Gr2dFormat` maps colorspace formats to SBFMT0 values. |
@@ -57,11 +57,18 @@ toolchains, and the env vars they need, so no setup is required.
 
 ## Core design: how a GPU job flows
 
-1. **Registers** are declared with `impl_registers![Client, pub NAME OFFSET(..) RELOCATABLE(bool) [fields]]`.
-   Each register becomes a module (`gr2d_reg::CTRLMAIN::TURBOFILL::ENABLE`, `DSTSIZE::DSTWIDTH.val(w)`,
-   `X::raw(..)`, `X::zero()`). `RELOCATABLE(true)` registers have no fields. Instead you build them from a
+1. **Registers** are declared with
+   `impl_registers![crate::Client, pub NAME OFFSET(..) RELOCATABLE(bool) UNSAFE(bool) [fields]]`
+   (`UNSAFE` is optional, defaults to `false`; the client path is resolved inside the generated
+   module, so make it absolute). Each register becomes a module (`gr2d_reg::CTRLMAIN::TURBOFILL::ENABLE`,
+   `DSTSIZE::DSTWIDTH.val(w)`, `X::raw(..)`, `X::zero()`). Mark registers whose writes can break
+   safety `UNSAFE(true)`: their fields live on `X::Fields`, which isn't a `Register`, and values must
+   go through the unsafe `X::new(fields)`; document the requirements on the register.
+   `RELOCATABLE(true)` implies `UNSAFE(true)`. These registers have no fields. Instead you build them from a
    branded buffer handle with `read(&buf)` / `write(&mut buf)` / `new(&mut buf)`. The returned
    `Relocatable<'id, ..>` carries the buffer's brand, not a borrow, so the handle can be moved on.
+   Register types of unsafe registers deliberately don't implement `RegisterLongName`, so tock's
+   `FieldValue` / `LocalRegisterCopy` can't carry raw values for them.
 2. **Commands** (`host1x_core::cmd`) take tuples of register values. Register ordering, mask width
    (16 bits for `Mask`, 6 for `SetClass`), contiguity for `WriteIncr`, and word/reloc counts are all
    checked **at compile time** through const generics and `assert!` in consts. The const generics are
