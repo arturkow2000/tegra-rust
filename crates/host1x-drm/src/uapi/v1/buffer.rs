@@ -9,7 +9,7 @@ use std::{
     slice,
 };
 
-use colorspace::{Encoding, Format};
+use colorspace::{Format, Layout};
 use host1x_buffer::access::{ReadOnly, ReadWrite, Readable};
 use rustix::mm::{MapFlags, mmap, munmap};
 use tracing::field;
@@ -57,7 +57,7 @@ impl<MM: MappingMode, F: Format> GenericBuffer<MM, PixelBuffer<F>> {
             }
         }
 
-        let stride = width.get() * F::Encoding::BPP.as_u8() as u32 / 8;
+        let stride = width.get() * F::Layout::BPP.as_u8() as u32 / 8;
 
         let size = NonZeroU32::new(stride * height.get()).expect("size should be nonzero");
         let handle = ioctl::gem_create(

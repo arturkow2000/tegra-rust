@@ -6,6 +6,7 @@ pub fn bpp_to_dstcd(bpp: BitsPerPixel) -> FieldValue<u32, CTRLMAIN::Register> {
     match bpp {
         BitsPerPixel::BPP8 => CTRLMAIN::DSTCD::BPP8,
         BitsPerPixel::BPP16 => CTRLMAIN::DSTCD::BPP16,
+        BitsPerPixel::BPP24 => panic!("GR2D doesn't support 24 bpp"),
         BitsPerPixel::BPP32 => CTRLMAIN::DSTCD::BPP32,
     }
 }

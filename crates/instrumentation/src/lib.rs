@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tracing;
 
-use colorspace::{Encoding, Format};
+use colorspace::{Format, Layout};
 use host1x_buffer::PixelBuffer;
 use once_cell::sync::OnceCell;
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
@@ -29,7 +29,7 @@ impl ToTracy for colorspace::Rgba8888 {
 impl ToTracy for colorspace::Bgra8888 {
     fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B) {
         let dst_stride = buf.width() as usize
-            * <<B::Format as Format>::Encoding as Encoding>::BPP.as_u8() as usize
+            * <<B::Format as Format>::Layout as Layout>::BPP.as_u8() as usize
             / 8;
         let mut dst = vec![0u8; buf.height() as usize * dst_stride];
 
@@ -42,7 +42,7 @@ impl ToTracy for colorspace::Bgra8888 {
                     x,
                     y,
                     &planes,
-                    <<B::Format as Format>::Encoding as Encoding>::BPP,
+                    <<B::Format as Format>::Layout as Layout>::BPP,
                 ) else {
                     error!("can't get pixel {x} {y}");
                     unreachable!()
@@ -51,7 +51,7 @@ impl ToTracy for colorspace::Bgra8888 {
                     x,
                     y,
                     &mut dst_planes,
-                    <<B::Format as Format>::Encoding as Encoding>::BPP,
+                    <<B::Format as Format>::Layout as Layout>::BPP,
                     pixel,
                 );
             }
