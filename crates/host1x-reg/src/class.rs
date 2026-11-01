@@ -5,8 +5,9 @@ use crate::impl_registers;
 // TODO: perhabs this would be better expressed to high-level sync APIs instead
 // of raw register writes.
 
+// Safety: class methods are at the same offsets in every class, INCR_SYNCPT is unsafe.
 impl_registers![
-    any,
+    unsafe any,
     /// Increment a syncpoint.
     ///
     /// # Safety

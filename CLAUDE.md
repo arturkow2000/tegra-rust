@@ -44,10 +44,10 @@ toolchains, and the env vars they need, so no setup is required.
 
 | Crate | `no_std` | Purpose |
 |---|---|---|
-| [host1x-client](crates/host1x-client/) | yes | `Client` trait: a Host1x hardware block identified by a 10-bit `CLASS` ID. Used as a type-level tag everywhere. |
+| [host1x-client](crates/host1x-client/) | yes | `Client` unsafe trait: a Host1x hardware block identified by a 10-bit `CLASS` ID. Used as a type-level tag everywhere. |
 | [colorspace](crates/colorspace/) | yes | Pixel formats (`Format`, `Encoding`, `Layout`, named in memory order, e.g. `Bgra8888`), typed `Color<E>`, get/set pixel helpers, drm-fourcc mapping. |
 | [host1x-buffer](crates/host1x-buffer/) | yes | Buffer traits: `Buffer`, `PixelBuffer`, and the per-client `MappedBuffer<C>` / `ReadableBuffer<C>` / `WritableBuffer<C>`. |
-| [host1x-reg](crates/host1x-reg/) | yes | `impl_registers!` macro on top of `tock-registers`; `Register<C>` / `RegisterValue<C>` traits; `reloc::Relocatable` for registers that hold buffer addresses; `class` = Host1x class methods (`INCR_SYNCPT`, an `UNSAFE(true)` register: a stray increment signals job fences early). |
+| [host1x-reg](crates/host1x-reg/) | yes | `impl_registers!` macro on top of `tock-registers`; `Register<C>` / `RegisterValue<C>` unsafe traits; `reloc::Relocatable` for registers that hold buffer addresses; `class` = Host1x class methods (`INCR_SYNCPT`, an `UNSAFE(true)` register: a stray increment signals job fences early). |
 | [gr2d-reg](crates/gr2d-reg/) | yes | GR2D register definitions (class `0x51`) and `gr2d_reg::Client`. |
 | [host1x-core](crates/host1x-core/) | yes (`std` feature) | Type-safe command stream building (`cmd`: `SetClass`, `Mask`, `WriteIncr`, `WriteNoIncr`), `cmdseq::CommandSequence`, the `task::Task` trait, and backend-agnostic `queue::{Queue, Fence, PendingTask}` traits. |
 | [gr2d](crates/gr2d/) | yes | High-level GR2D operations as `Task`s: `clear`, `clear_with_color`, `fill_rect` (`fill::Fill`). `Gr2dFormat` maps colorspace formats to SBFMT0 values. |
@@ -58,8 +58,8 @@ toolchains, and the env vars they need, so no setup is required.
 ## Core design: how a GPU job flows
 
 1. **Registers** are declared with
-   `impl_registers![crate::Client, pub NAME OFFSET(..) RELOCATABLE(bool) UNSAFE(bool) [fields]]`
-   (`UNSAFE` is optional, defaults to `false`; the client path is resolved inside the generated
+   `impl_registers![unsafe crate::Client, pub NAME OFFSET(..) RELOCATABLE(bool) UNSAFE(bool) [fields]]`
+   (the `unsafe` keyword is required, because the macro implements the unsafe `Register` trait; `UNSAFE` is optional, defaults to `false`; the client path is resolved inside the generated
    module, so make it absolute). Each register becomes a module (`gr2d_reg::CTRLMAIN::TURBOFILL::ENABLE`,
    `DSTSIZE::DSTWIDTH.val(w)`, `X::raw(..)`, `X::zero()`). Mark registers whose writes can break
    safety `UNSAFE(true)`: their fields live on `X::Fields`, which isn't a `Register`, and values must

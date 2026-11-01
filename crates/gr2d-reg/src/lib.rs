@@ -6,12 +6,16 @@ use host1x_reg::impl_registers;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Client;
-impl host1x_client::Client for Client {
+// Safety: 0x51 is the class ID of GR2D.
+unsafe impl host1x_client::Client for Client {
     const CLASS: u10 = u10::new(0x51);
 }
 
+// Safety: offsets follow the Tegra 20 TRM. Buffer address registers are relocatable, other
+// registers can only break safety together with them (buffer geometry), which tasks setting
+// buffer addresses must get right.
 impl_registers![
-    crate::Client,
+    unsafe crate::Client,
     pub TRIGGER0 OFFSET(0x09) RELOCATABLE(false) [
         TRIGGER OFFSET(0) NUMBITS(16) []
     ],
