@@ -1,4 +1,4 @@
-use colorspace::{Encoding, Format, color::Color};
+use colorspace::{Format, Layout, color::Color};
 use embedded_graphics::primitives::Rectangle;
 use gr2d_reg::{
     CLIPLEFTTOP, CLIPRIGHTBOT, CMDSEL, CTRL1, CTRLMAIN, DSTBA, DSTPS, DSTSIZE, DSTST, ROPFADE,
@@ -31,7 +31,7 @@ impl p::ClipMode for Clip {
     fn cmdseq<F: Format + Gr2dFormat>(
         self,
     ) -> impl host1x_core::cmdseq::CommandSequence<gr2d_reg::Client> {
-        let bpp = <F as Format>::Encoding::BPP;
+        let bpp = <F as Format>::Layout::BPP;
 
         (Mask::<6, 0, gr2d_reg::Client, _>::new((
             F::SIFMT + F::DIFMT,
@@ -56,7 +56,7 @@ impl p::ClipMode for NoClip {
     fn cmdseq<F: Format + Gr2dFormat>(
         self,
     ) -> impl host1x_core::cmdseq::CommandSequence<gr2d_reg::Client> {
-        let bpp = <F as Format>::Encoding::BPP;
+        let bpp = <F as Format>::Layout::BPP;
 
         (Mask::<4, 0, gr2d_reg::Client, _>::new((
             F::SIFMT + F::DIFMT,

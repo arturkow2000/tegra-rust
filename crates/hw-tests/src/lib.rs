@@ -5,7 +5,7 @@ pub mod util;
 
 use std::ops::Deref;
 
-use colorspace::{Encoding, Format, Rgb, color::Color};
+use colorspace::{Format, Layout, Rgb, color::Color};
 use gr2d::format::Gr2dFormat;
 
 /// Alias for RGB format.
@@ -32,7 +32,7 @@ macro_rules! exec {
 /// Helper methods for accessing pixel buffers.
 pub trait PixelBufferExt: host1x_buffer::PixelBuffer + Deref<Target = [u8]> {
     fn bits_per_pixel(&self) -> usize {
-        <Self::Format as Format>::Encoding::BPP.as_u8() as usize
+        <Self::Format as Format>::Layout::BPP.as_u8() as usize
     }
 
     /// Bytes per pixel
@@ -60,7 +60,7 @@ pub trait PixelBufferExt: host1x_buffer::PixelBuffer + Deref<Target = [u8]> {
 
     /// Get pixel decoded to a [`Color`].
     fn pixel(&self, x: u32, y: u32) -> Color<<Self::Format as Format>::Encoding> {
-        let bpp = <<Self::Format as Format>::Encoding as Encoding>::BPP;
+        let bpp = <<Self::Format as Format>::Layout as Layout>::BPP;
         <Self::Format as Format>::get_pixel(x, y, &[(self.stride(), &self[..])], bpp)
             .expect("pixel within bounds")
     }

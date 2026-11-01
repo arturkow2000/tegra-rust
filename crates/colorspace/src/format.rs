@@ -18,6 +18,7 @@ mod sealed {
 pub enum BitsPerPixel {
     BPP8 = 8,
     BPP16 = 16,
+    BPP24 = 24,
     BPP32 = 32,
 }
 impl BitsPerPixel {
@@ -25,6 +26,7 @@ impl BitsPerPixel {
         match v {
             8 => BitsPerPixel::BPP8,
             16 => BitsPerPixel::BPP16,
+            24 => BitsPerPixel::BPP24,
             32 => BitsPerPixel::BPP32,
             _ => panic!("unsupported BPP value"),
         }
@@ -37,7 +39,6 @@ impl BitsPerPixel {
 /// Pixel encoding, defines what channels form color of a pixel and bitsize of each channel value.
 pub trait Encoding: Copy + sealed::SealedEncoding {
     type Storage: Copy + Eq;
-    const BPP: BitsPerPixel;
 
     const BLACK: Color<Self>;
 
@@ -94,6 +95,9 @@ pub trait Layout: Copy + sealed::SealedLayout {
     ///
     /// Linear layouts have one plane.
     const N_PLANES: NonZeroUsize;
+
+    /// Size of a pixel in memory.
+    const BPP: BitsPerPixel;
 
     // TODO: implement missing consts/functions. Currently we have no means to
     // query actual layout so this trait is not usable.
@@ -181,7 +185,6 @@ impl<
 > Encoding for RgbGeneric<R, G, B, NoAlpha>
 {
     type Storage = (R, G, B, NoAlpha);
-    const BPP: BitsPerPixel = BitsPerPixel::try_from_usize(R::BITS + G::BITS + B::BITS);
 
     const BLACK: Color<Self> = Color((R::MIN, G::MIN, B::MIN, NoAlpha));
 
@@ -215,7 +218,6 @@ impl<
 > Encoding for RgbGeneric<R, G, B, A>
 {
     type Storage = (R, G, B, A);
-    const BPP: BitsPerPixel = BitsPerPixel::try_from_usize(R::BITS + G::BITS + B::BITS + A::BITS);
 
     const BLACK: Color<Self> = Color((R::MIN, G::MIN, B::MIN, A::DEFAULT_ALPHA));
 
@@ -291,18 +293,24 @@ impl<
 }
 
 #[derive(Clone, Copy)]
-pub struct LinearRgb<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize> {}
-impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize> sealed::SealedLayout
-    for LinearRgb<R_OFFSET, G_OFFSET, B_OFFSET>
+pub struct LinearRgb<
+    const R_OFFSET: usize,
+    const G_OFFSET: usize,
+    const B_OFFSET: usize,
+    const BPP: usize,
+> {}
+impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const BPP: usize>
+    sealed::SealedLayout for LinearRgb<R_OFFSET, G_OFFSET, B_OFFSET, BPP>
 {
 }
-impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize> Layout
-    for LinearRgb<R_OFFSET, G_OFFSET, B_OFFSET>
+impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const BPP: usize> Layout
+    for LinearRgb<R_OFFSET, G_OFFSET, B_OFFSET, BPP>
 {
     const N_PLANES: NonZeroUsize = NonZeroUsize::new(1).unwrap();
+    const BPP: BitsPerPixel = BitsPerPixel::try_from_usize(BPP);
 }
-impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize> RgbLayout
-    for LinearRgb<R_OFFSET, G_OFFSET, B_OFFSET>
+impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const BPP: usize>
+    RgbLayout for LinearRgb<R_OFFSET, G_OFFSET, B_OFFSET, BPP>
 {
     const R_OFFSET: usize = R_OFFSET;
     const G_OFFSET: usize = G_OFFSET;
@@ -319,18 +327,35 @@ pub struct LinearRgba<
     const G_OFFSET: usize,
     const B_OFFSET: usize,
     const A_OFFSET: usize,
+    const BPP: usize,
 > {}
-impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const A_OFFSET: usize>
-    sealed::SealedLayout for LinearRgba<R_OFFSET, G_OFFSET, B_OFFSET, A_OFFSET>
+impl<
+    const R_OFFSET: usize,
+    const G_OFFSET: usize,
+    const B_OFFSET: usize,
+    const A_OFFSET: usize,
+    const BPP: usize,
+> sealed::SealedLayout for LinearRgba<R_OFFSET, G_OFFSET, B_OFFSET, A_OFFSET, BPP>
 {
 }
-impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const A_OFFSET: usize>
-    Layout for LinearRgba<R_OFFSET, G_OFFSET, B_OFFSET, A_OFFSET>
+impl<
+    const R_OFFSET: usize,
+    const G_OFFSET: usize,
+    const B_OFFSET: usize,
+    const A_OFFSET: usize,
+    const BPP: usize,
+> Layout for LinearRgba<R_OFFSET, G_OFFSET, B_OFFSET, A_OFFSET, BPP>
 {
     const N_PLANES: NonZeroUsize = NonZeroUsize::new(1).unwrap();
+    const BPP: BitsPerPixel = BitsPerPixel::try_from_usize(BPP);
 }
-impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const A_OFFSET: usize>
-    RgbLayout for LinearRgba<R_OFFSET, G_OFFSET, B_OFFSET, A_OFFSET>
+impl<
+    const R_OFFSET: usize,
+    const G_OFFSET: usize,
+    const B_OFFSET: usize,
+    const A_OFFSET: usize,
+    const BPP: usize,
+> RgbLayout for LinearRgba<R_OFFSET, G_OFFSET, B_OFFSET, A_OFFSET, BPP>
 {
     const R_OFFSET: usize = R_OFFSET;
     const G_OFFSET: usize = G_OFFSET;
@@ -340,8 +365,13 @@ impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const 
     const G_PLANE: usize = 0;
     const B_PLANE: usize = 0;
 }
-impl<const R_OFFSET: usize, const G_OFFSET: usize, const B_OFFSET: usize, const A_OFFSET: usize>
-    RgbaLayout for LinearRgba<R_OFFSET, G_OFFSET, B_OFFSET, A_OFFSET>
+impl<
+    const R_OFFSET: usize,
+    const G_OFFSET: usize,
+    const B_OFFSET: usize,
+    const A_OFFSET: usize,
+    const BPP: usize,
+> RgbaLayout for LinearRgba<R_OFFSET, G_OFFSET, B_OFFSET, A_OFFSET, BPP>
 {
     const A_OFFSET: usize = A_OFFSET;
     const A_PLANE: usize = 0;
@@ -383,7 +413,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B` means B is at byte 0.
-                type Layout = LinearRgb<{ $b_bits + $g_bits }, $b_bits, 0>;
+                type Layout = LinearRgb<{ $b_bits + $g_bits }, $b_bits, 0, { $r_bits + $g_bits + $b_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -414,7 +444,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R` means R is at byte 0.
-                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }>;
+                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -445,7 +475,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `x:R:G:B` means B is at byte 0.
-                type Layout = LinearRgb::<{ $b_bits + $g_bits }, $b_bits, 0>;
+                type Layout = LinearRgb::<{ $b_bits + $g_bits }, $b_bits, 0, { $r_bits + $g_bits + $b_bits + $a_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -476,7 +506,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `A:R:G:B` means B is at byte 0.
-                type Layout = LinearRgba::<{ $b_bits + $g_bits }, $b_bits, 0, { $b_bits + $g_bits + $r_bits }>;
+                type Layout = LinearRgba::<{ $b_bits + $g_bits }, $b_bits, 0, { $b_bits + $g_bits + $r_bits }, { $r_bits + $g_bits + $b_bits + $a_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -507,7 +537,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `x:B:G:R` means R is at byte 0.
-                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }>;
+                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits + $a_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -538,7 +568,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `A:B:G:R` means R is at byte 0.
-                type Layout = LinearRgba::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits }>;
+                type Layout = LinearRgba::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits }, { $r_bits + $g_bits + $b_bits + $a_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -569,7 +599,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B:x` means x is at byte 0.
-                type Layout = LinearRgb::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits>;
+                type Layout = LinearRgb::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits, { $r_bits + $g_bits + $b_bits + $a_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -600,7 +630,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B:A` means A is at byte 0.
-                type Layout = LinearRgba::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits, 0>;
+                type Layout = LinearRgba::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits, 0, { $r_bits + $g_bits + $b_bits + $a_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -631,7 +661,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R:x` means x is at byte 0.
-                type Layout = LinearRgb::<{ $a_bits + $r_bits + $g_bits }, { $a_bits + $r_bits }, $a_bits>;
+                type Layout = LinearRgb::<{ $a_bits + $r_bits + $g_bits }, { $a_bits + $r_bits }, $a_bits, { $r_bits + $g_bits + $b_bits + $a_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -662,7 +692,7 @@ macro_rules! impl_format_linear {
             impl Format for $ty {
                 type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
                 // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R:A` means A is at byte 0.
-                type Layout = LinearRgba::<$a_bits, { $a_bits + $r_bits }, { $a_bits + $r_bits + $g_bits }, 0>;
+                type Layout = LinearRgba::<$a_bits, { $a_bits + $r_bits }, { $a_bits + $r_bits + $g_bits }, 0, { $r_bits + $g_bits + $b_bits + $a_bits }>;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
@@ -1074,5 +1104,24 @@ mod tests {
     fn abgr8888_byte_order() {
         // ABGR8888 in memory is [R, G, B, A].
         assert_eq!(red_bytes::<Abgr8888>(), [0xff, 0x00, 0x00, 0xff]);
+    }
+
+    #[test]
+    fn bits_per_pixel() {
+        fn bpp<F: Format>() -> u8 {
+            <F::Layout as Layout>::BPP.as_u8()
+        }
+        assert_eq!(bpp::<Abgr8888>(), 32);
+        assert_eq!(bpp::<Argb8888>(), 32);
+        assert_eq!(bpp::<Bgr565>(), 16);
+        assert_eq!(bpp::<Bgr888>(), 24);
+        assert_eq!(bpp::<Bgra8888>(), 32);
+        assert_eq!(bpp::<Bgrx8888>(), 32);
+        assert_eq!(bpp::<Rgb565>(), 16);
+        assert_eq!(bpp::<Rgb888>(), 24);
+        assert_eq!(bpp::<Rgba8888>(), 32);
+        assert_eq!(bpp::<Rgbx8888>(), 32);
+        assert_eq!(bpp::<Xbgr8888>(), 32);
+        assert_eq!(bpp::<Xrgb8888>(), 32);
     }
 }
