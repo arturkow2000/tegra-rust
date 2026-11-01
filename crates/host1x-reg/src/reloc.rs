@@ -6,7 +6,6 @@ use getset::CopyGetters;
 pub use host1x_buffer::access::{ReadOnly, ReadWrite, WriteOnly};
 use host1x_buffer::{ReadableBuffer, WritableBuffer};
 use host1x_client::Client;
-use tock_registers::RegisterLongName;
 
 /// A relocatable memory pointer.
 ///
@@ -19,7 +18,7 @@ use tock_registers::RegisterLongName;
 /// doesn't keep the buffer locked, so a task may emit relocations and then hand
 /// the buffer over to the next task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, CopyGetters)]
-pub struct Relocatable<'id, R: RegisterLongName, M, C: Client> {
+pub struct Relocatable<'id, R, M, C: Client> {
     #[get_copy = "pub"]
     mapping: u32,
 
@@ -35,7 +34,7 @@ pub struct Relocatable<'id, R: RegisterLongName, M, C: Client> {
     _client: PhantomData<C>,
 }
 
-impl<'id, R: RegisterLongName, M, C: Client> Relocatable<'id, R, M, C> {
+impl<'id, R, M, C: Client> Relocatable<'id, R, M, C> {
     /// Create a relocatable address using raw mapping ID.
     ///
     /// # Safety
@@ -55,7 +54,7 @@ impl<'id, R: RegisterLongName, M, C: Client> Relocatable<'id, R, M, C> {
     }
 }
 
-impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, ReadOnly, C> {
+impl<'id, R, C: Client> Relocatable<'id, R, ReadOnly, C> {
     /// Create relocatable address for reading from the buffer.
     pub fn read(buf: &impl ReadableBuffer<'id, C>) -> Self {
         // Safety: `MappedBuffer` contract guarantees that the mapping belongs
@@ -64,7 +63,7 @@ impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, ReadOnly, C> {
     }
 }
 
-impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, WriteOnly, C> {
+impl<'id, R, C: Client> Relocatable<'id, R, WriteOnly, C> {
     /// Create relocatable address for writing to the buffer.
     pub fn write(buf: &mut impl WritableBuffer<'id, C>) -> Self {
         // Safety: `MappedBuffer` contract guarantees that the mapping belongs
@@ -73,7 +72,7 @@ impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, WriteOnly, C> {
     }
 }
 
-impl<'id, R: RegisterLongName, C: Client> Relocatable<'id, R, ReadWrite, C> {
+impl<'id, R, C: Client> Relocatable<'id, R, ReadWrite, C> {
     // TODO: support offsets in safe API.
 
     /// Create relocatable address for reading and writing the buffer.

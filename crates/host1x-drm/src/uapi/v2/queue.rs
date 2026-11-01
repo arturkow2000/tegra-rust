@@ -96,13 +96,15 @@ impl<'a, C: Client, B, S: CommandSequence<C>> Future for Submit<'a, C, B, S> {
         // FIXME: submit is blocking, we should do this from a blocking thread pool,
         // but currently CommandSequence (and many other types) are !Send.
         let (buffers, seq, mut wait) = proj.state.take().unwrap();
+        // Safety: increments the queue's own syncpoint once, when the job is done. That's
+        // the single increment `Channel::submit` declares for the job.
+        let incr = unsafe {
+            INCR_SYNCPT::new(
+                INCR_SYNCPT::COND::OP_DONE + INCR_SYNCPT::INDX.val(proj.syncpoint.id()),
+            )
+        };
         proj.channel.submit(
-            (
-                seq,
-                WriteNoIncr::new([
-                    INCR_SYNCPT::COND::OP_DONE + INCR_SYNCPT::INDX.val(proj.syncpoint.id())
-                ]),
-            ),
+            (seq, WriteNoIncr::new([incr])),
             proj.syncpoint,
             None,
             Some(&mut wait.syncobj),

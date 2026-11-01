@@ -7,7 +7,16 @@ use crate::impl_registers;
 
 impl_registers![
     any,
-    pub INCR_SYNCPT OFFSET(0x00) RELOCATABLE(false) [
+    /// Increment a syncpoint.
+    ///
+    /// # Safety
+    /// Syncpoints back the fences of jobs: once a syncpoint reaches the value expected
+    /// for a job, the job counts as done and its buffers are given back to the CPU.
+    /// Every write increments syncpoint `INDX` once condition `COND` is met. The caller
+    /// must ensure that each such increment targets a syncpoint owned by the caller, and
+    /// is accounted for in the number of increments declared for the job when submitting
+    /// it, so that no job fence signals before the GPU is done.
+    pub INCR_SYNCPT OFFSET(0x00) RELOCATABLE(false) UNSAFE(true) [
         COND OFFSET(8) NUMBITS(8) [
             IMMEDIATE = 0,
             OP_DONE = 1,
