@@ -220,6 +220,10 @@
             pkgsMusl.pkgsBuildBuild.ripgrep
             pkgsMusl.pkgsBuildBuild.just
             pkgsMusl.pkgsBuildBuild.cargo-expand
+            # For Claude (PDF processing)
+            pkgsMusl.pkgsBuildBuild.poppler-utils
+            pkgsMusl.pkgsBuildBuild.mupdf
+            pkgsMusl.pkgsBuildBuild.pdfgrep
           ]
           ++ lib.optional includeGlibc rustGlibc
           # When using clang this will be just another wrapper around same compiler.
