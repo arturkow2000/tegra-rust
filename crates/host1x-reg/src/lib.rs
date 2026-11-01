@@ -21,7 +21,7 @@ use crate::reloc::{Relocatable, Relocation};
 ///
 /// ```text
 /// impl_registers![
-///     crate::Client, // or `any`, for registers present in every client (Host1x class methods)
+///     unsafe crate::Client, // or `unsafe any`, for registers present in every client (Host1x class methods)
 ///     /// Documentation of the register.
 ///     pub NAME OFFSET(0x2b) RELOCATABLE(false) UNSAFE(false) [ fields ],
 ///     ...
@@ -43,16 +43,22 @@ use crate::reloc::{Relocatable, Relocation};
 ///   or with the unsafe `for_raw_mapping()`. Relocatable registers are always unsafe, so
 ///   `RELOCATABLE(true) UNSAFE(false)` is rejected.
 ///
+/// # Safety
+/// The macro implements the unsafe [`Register`] trait, so the invocation must start with
+/// `unsafe`, and the caller must uphold its requirements for every register: offsets must be
+/// correct, and registers whose writes can break safety guarantees must not be declared
+/// plain.
+///
 /// # Examples
 ///
 /// ```
 /// # use host1x_reg::{RegisterValue, impl_registers};
 /// # pub struct Client;
-/// # impl host1x_client::Client for Client {
+/// # unsafe impl host1x_client::Client for Client {
 /// #     const CLASS: arbitrary_int::u10 = arbitrary_int::u10::new(0x51);
 /// # }
 /// impl_registers![
-///     crate::Client,
+///     unsafe crate::Client,
 ///     pub CTRL OFFSET(0x01) RELOCATABLE(false) [ ENABLE OFFSET(0) NUMBITS(1) [] ],
 ///     /// # Safety
 ///     /// Writing must not do anything bad.
@@ -73,11 +79,11 @@ use crate::reloc::{Relocatable, Relocation};
 /// ```compile_fail,E0277
 /// # use host1x_reg::{RegisterValue, impl_registers};
 /// # pub struct Client;
-/// # impl host1x_client::Client for Client {
+/// # unsafe impl host1x_client::Client for Client {
 /// #     const CLASS: arbitrary_int::u10 = arbitrary_int::u10::new(0x51);
 /// # }
 /// impl_registers![
-///     crate::Client,
+///     unsafe crate::Client,
 ///     pub DANGER OFFSET(0x02) RELOCATABLE(false) UNSAFE(true) [ VALUE OFFSET(0) NUMBITS(8) [] ],
 /// ];
 ///
@@ -92,11 +98,11 @@ use crate::reloc::{Relocatable, Relocation};
 /// ```compile_fail,E0277
 /// # use host1x_reg::{RegisterValue, impl_registers};
 /// # pub struct Client;
-/// # impl host1x_client::Client for Client {
+/// # unsafe impl host1x_client::Client for Client {
 /// #     const CLASS: arbitrary_int::u10 = arbitrary_int::u10::new(0x51);
 /// # }
 /// impl_registers![
-///     crate::Client,
+///     unsafe crate::Client,
 ///     pub ADDR OFFSET(0x03) RELOCATABLE(true) [],
 /// ];
 ///
@@ -111,23 +117,38 @@ use crate::reloc::{Relocatable, Relocation};
 /// ```compile_fail
 /// # use host1x_reg::impl_registers;
 /// # pub struct Client;
-/// # impl host1x_client::Client for Client {
+/// # unsafe impl host1x_client::Client for Client {
+/// #     const CLASS: arbitrary_int::u10 = arbitrary_int::u10::new(0x51);
+/// # }
+/// impl_registers![
+///     unsafe crate::Client,
+///     pub ADDR OFFSET(0x03) RELOCATABLE(true) UNSAFE(false) [],
+/// ];
+/// # fn main() {}
+/// ```
+///
+/// Nor can registers be declared without `unsafe`:
+///
+/// ```compile_fail
+/// # use host1x_reg::impl_registers;
+/// # pub struct Client;
+/// # unsafe impl host1x_client::Client for Client {
 /// #     const CLASS: arbitrary_int::u10 = arbitrary_int::u10::new(0x51);
 /// # }
 /// impl_registers![
 ///     crate::Client,
-///     pub ADDR OFFSET(0x03) RELOCATABLE(true) UNSAFE(false) [],
+///     pub CTRL OFFSET(0x01) RELOCATABLE(false) [ ENABLE OFFSET(0) NUMBITS(1) [] ],
 /// ];
 /// # fn main() {}
 /// ```
 #[macro_export]
 macro_rules! impl_registers {
-    { any, $($(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE($reloc:ident) $(UNSAFE($unsafe:ident))? [$($fields:tt)*]),* $(,)? } => {
+    { unsafe any, $($(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE($reloc:ident) $(UNSAFE($unsafe:ident))? [$($fields:tt)*]),* $(,)? } => {
         $(
             $crate::__impl_registers!(@munch((C: $crate::__reexports::host1x_client::Client), C) $(#[$inner])* $vis $reg OFFSET($off) RELOCATABLE($reloc) UNSAFE($($unsafe)?) [$($fields)*]);
         )*
     };
-    { $class:ty, $($(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE($reloc:ident) $(UNSAFE($unsafe:ident))? [$($fields:tt)*]),* $(,)? } => {
+    { unsafe $class:ty, $($(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE($reloc:ident) $(UNSAFE($unsafe:ident))? [$($fields:tt)*]),* $(,)? } => {
         $(
             $crate::__impl_registers!(@munch((), $class) $(#[$inner])* $vis $reg OFFSET($off) RELOCATABLE($reloc) UNSAFE($($unsafe)?) [$($fields)*]);
         )*
@@ -151,7 +172,7 @@ macro_rules! __impl_registers {
             pub struct Register;
             // Deliberately does not implement RegisterLongName so tock_registers can't be used
             // to bypass constructors.
-            impl<$($ty $(: $bound)?),*> $crate::Register<$($class)?> for Register {
+            unsafe impl<$($ty $(: $bound)?),*> $crate::Register<$($class)?> for Register {
                 const OFFSET: u12 = u12::new($off);
             }
 
@@ -190,7 +211,7 @@ macro_rules! __impl_registers {
             /// the unsafe [`new`].
             #[derive(Clone, Copy)]
             pub struct Register;
-            impl<$($ty $(: $bound)?),*> $crate::Register<$($class)?> for Register {
+            unsafe impl<$($ty $(: $bound)?),*> $crate::Register<$($class)?> for Register {
                 const OFFSET: u12 = u12::new($off);
             }
 
@@ -271,7 +292,7 @@ macro_rules! __impl_registers {
             // Registers are always 32-bit.
             $crate::__reexports::tock_registers::register_bitmasks!(u32, $reg, Register, $fields);
 
-            impl<$($ty $(: $bound)?),*> $crate::Register<$($class)?> for Register {
+            unsafe impl<$($ty $(: $bound)?),*> $crate::Register<$($class)?> for Register {
                 const OFFSET: u12 = u12::new($off);
             }
         }
@@ -279,9 +300,18 @@ macro_rules! __impl_registers {
 }
 
 /// A register for some device that is behind Host1x interface.
-// FIXME: each client has it's own register set, this struct should be generic over
-// host1x_client::Client.
-pub trait Register<C: Client> {
+///
+/// Define registers with [`impl_registers!`] instead of implementing this by hand.
+///
+/// # Safety
+/// Commands write values of registers, and tasks trust their types: any [`RegisterValue`]
+/// with `R = Self` that safe code can create must be safe to write, unless it's only unsafe
+/// in combination with other writes that tasks must already get right (such as buffer
+/// geometry matching the relocated buffer). In particular, if
+/// `Self` implements [`RegisterLongName`], any value can be created through
+/// [`FieldValue`] or [`LocalRegisterCopy`], so writing any value to the register must be
+/// safe. `OFFSET` must be the offset of the register in client `C`.
+pub unsafe trait Register<C: Client> {
     /// Register offset in [`u32`] words.
     const OFFSET: u12;
 }
