@@ -406,18 +406,18 @@ pub trait Format: Debug + Copy {
 }
 
 macro_rules! impl_format_linear {
-    ($ty:ident, rgb = ($r_bits:literal, $g_bits:literal, $b_bits:literal)) => {
+    (@impl $ty:ident, $kind:ident, $enc:ty, $layout:ty) => {
         paste! {
+            #[doc = concat!("Maps to [`DrmFourcc::", stringify!($ty), "`].")]
             #[derive(Debug, Clone, Copy)]
             pub struct $ty {}
             impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B` means B is at byte 0.
-                type Layout = LinearRgb<{ $b_bits + $g_bits }, $b_bits, 0, { $r_bits + $g_bits + $b_bits }>;
+                type Encoding = $enc;
+                type Layout = $layout;
                 const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
                 fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgb_to_gr2d_reg::<Self>(c.0)
+                    [<$kind _to_gr2d_reg>]::<Self>(c.0)
                 }
 
                 fn get_pixel(
@@ -425,7 +425,7 @@ macro_rules! impl_format_linear {
                     y: u32,
                     planes: &[(u32, &[u8])],
                     bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
+                ) -> Option<Color<Self::Encoding>> { [<get_ $kind _pixel>]::<Self>(x, y, planes, bpp) }
 
                 fn set_pixel(
                     x: u32,
@@ -433,288 +433,63 @@ macro_rules! impl_format_linear {
                     planes: &mut [(u32, &mut [u8])],
                     bpp: BitsPerPixel,
                     color: Color<Self::Encoding>,
-                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
+                ) -> bool { [<set_ $kind _pixel>]::<Self>(x, y, planes, bpp, color) }
             }
         }
     };
-    ($ty:ident, bgr = ($b_bits:literal, $g_bits:literal, $r_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R` means R is at byte 0.
-                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
 
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgb_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    // Memory order: the first named channel is at the lowest address, which is
+    // bit offset 0 of a little-endian word. Channels smaller than a byte (565)
+    // follow the same rule, so they are named from the least significant bit.
+    ($ty:ident, rgb = ($r:literal, $g:literal, $b:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgb,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
+            LinearRgb<0, $r, { $r + $g }, { $r + $g + $b }>); }
     };
-    ($ty:ident, xrgb = ($a_bits:literal, $r_bits:literal, $b_bits:literal, $g_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `x:R:G:B` means B is at byte 0.
-                type Layout = LinearRgb::<{ $b_bits + $g_bits }, $b_bits, 0, { $r_bits + $g_bits + $b_bits + $a_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
-
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgb_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    ($ty:ident, bgr = ($b:literal, $g:literal, $r:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgb,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
+            LinearRgb<{ $b + $g }, $b, 0, { $r + $g + $b }>); }
     };
-    ($ty:ident, argb = ($a_bits:literal, $r_bits:literal, $b_bits:literal, $g_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `A:R:G:B` means B is at byte 0.
-                type Layout = LinearRgba::<{ $b_bits + $g_bits }, $b_bits, 0, { $b_bits + $g_bits + $r_bits }, { $r_bits + $g_bits + $b_bits + $a_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
-
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgba_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgba_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    ($ty:ident, rgba = ($r:literal, $g:literal, $b:literal, $a:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgba,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], [<u $a>]>,
+            LinearRgba<0, $r, { $r + $g }, { $r + $g + $b }, { $r + $g + $b + $a }>); }
     };
-    ($ty:ident, xbgr = ($a_bits:literal, $b_bits:literal, $g_bits:literal, $r_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `x:B:G:R` means R is at byte 0.
-                type Layout = LinearRgb::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits + $a_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
-
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgb_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    ($ty:ident, bgra = ($b:literal, $g:literal, $r:literal, $a:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgba,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], [<u $a>]>,
+            LinearRgba<{ $b + $g }, $b, 0, { $b + $g + $r }, { $r + $g + $b + $a }>); }
     };
-    ($ty:ident, abgr = ($a_bits:literal, $b_bits:literal, $g_bits:literal, $r_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `A:B:G:R` means R is at byte 0.
-                type Layout = LinearRgba::<0, $r_bits, { $r_bits + $g_bits }, { $r_bits + $g_bits + $b_bits }, { $r_bits + $g_bits + $b_bits + $a_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
-
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgba_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgba_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    ($ty:ident, argb = ($a:literal, $r:literal, $g:literal, $b:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgba,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], [<u $a>]>,
+            LinearRgba<$a, { $a + $r }, { $a + $r + $g }, 0, { $r + $g + $b + $a }>); }
     };
-    ($ty:ident, rgbx = ($r_bits:literal, $g_bits:literal, $b_bits:literal, $a_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B:x` means x is at byte 0.
-                type Layout = LinearRgb::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits, { $r_bits + $g_bits + $b_bits + $a_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
-
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgb_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    ($ty:ident, abgr = ($a:literal, $b:literal, $g:literal, $r:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgba,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], [<u $a>]>,
+            LinearRgba<{ $a + $b + $g }, { $a + $b }, $a, 0, { $r + $g + $b + $a }>); }
     };
-    ($ty:ident, rgba = ($r_bits:literal, $g_bits:literal, $b_bits:literal, $a_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `R:G:B:A` means A is at byte 0.
-                type Layout = LinearRgba::<{ $a_bits + $b_bits + $g_bits }, { $a_bits + $b_bits }, $a_bits, 0, { $r_bits + $g_bits + $b_bits + $a_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
-
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgba_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgba_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    ($ty:ident, rgbx = ($r:literal, $g:literal, $b:literal, $x:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgb,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
+            LinearRgb<0, $r, { $r + $g }, { $r + $g + $b + $x }>); }
     };
-    ($ty:ident, bgrx = ($b_bits:literal, $g_bits:literal, $r_bits:literal, $a_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], NoAlpha>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R:x` means x is at byte 0.
-                type Layout = LinearRgb::<{ $a_bits + $r_bits + $g_bits }, { $a_bits + $r_bits }, $a_bits, { $r_bits + $g_bits + $b_bits + $a_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
-
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgb_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgb_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgb_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    ($ty:ident, bgrx = ($b:literal, $g:literal, $r:literal, $x:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgb,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
+            LinearRgb<{ $b + $g }, $b, 0, { $r + $g + $b + $x }>); }
     };
-    ($ty:ident, bgra = ($b_bits:literal, $g_bits:literal, $r_bits:literal, $a_bits:literal)) => {
-        paste! {
-            #[derive(Debug, Clone, Copy)]
-            pub struct $ty {}
-            impl Format for $ty {
-                type Encoding = RgbGeneric::<[<u $r_bits>], [<u $g_bits>], [<u $b_bits>], [<u $a_bits>]>;
-                // DRM fourcc is MSB->LSB of a little-endian word: `B:G:R:A` means A is at byte 0.
-                type Layout = LinearRgba::<$a_bits, { $a_bits + $r_bits }, { $a_bits + $r_bits + $g_bits }, 0, { $r_bits + $g_bits + $b_bits + $a_bits }>;
-                const DRM_FCC: DrmFourcc = DrmFourcc::$ty;
-
-                fn color_to_gr2d_reg(c: Color<Self::Encoding>) -> u32 {
-                    rgba_to_gr2d_reg::<Self>(c.0)
-                }
-
-                fn get_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &[(u32, &[u8])],
-                    bpp: BitsPerPixel,
-                ) -> Option<Color<Self::Encoding>> { get_rgba_pixel::<Self>(x, y, planes, bpp) }
-
-                fn set_pixel(
-                    x: u32,
-                    y: u32,
-                    planes: &mut [(u32, &mut [u8])],
-                    bpp: BitsPerPixel,
-                    color: Color<Self::Encoding>,
-                ) -> bool { set_rgba_pixel::<Self>(x, y, planes, bpp, color) }
-            }
-        }
+    ($ty:ident, xrgb = ($x:literal, $r:literal, $g:literal, $b:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgb,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
+            LinearRgb<$x, { $x + $r }, { $x + $r + $g }, { $r + $g + $b + $x }>); }
+    };
+    ($ty:ident, xbgr = ($x:literal, $b:literal, $g:literal, $r:literal)) => {
+        paste! { impl_format_linear!(@impl $ty, rgb,
+            RgbGeneric<[<u $r>], [<u $g>], [<u $b>], NoAlpha>,
+            LinearRgb<{ $x + $b + $g }, { $x + $b }, $x, { $r + $g + $b + $x }>); }
     };
 }
 
@@ -1048,18 +823,18 @@ where
     true
 }
 
-impl_format_linear!(Abgr8888, abgr = (8, 8, 8, 8));
-impl_format_linear!(Argb8888, argb = (8, 8, 8, 8));
-impl_format_linear!(Bgr565, bgr = (5, 6, 5));
-impl_format_linear!(Bgr888, bgr = (8, 8, 8));
-impl_format_linear!(Bgra8888, bgra = (8, 8, 8, 8));
-impl_format_linear!(Bgrx8888, bgrx = (8, 8, 8, 8));
-impl_format_linear!(Rgb565, rgb = (5, 6, 5));
-impl_format_linear!(Rgb888, rgb = (8, 8, 8));
-impl_format_linear!(Rgba8888, rgba = (8, 8, 8, 8));
-impl_format_linear!(Rgbx8888, rgbx = (8, 8, 8, 8));
-impl_format_linear!(Xbgr8888, xbgr = (8, 8, 8, 8));
-impl_format_linear!(Xrgb8888, xrgb = (8, 8, 8, 8));
+impl_format_linear!(Abgr8888, rgba = (8, 8, 8, 8));
+impl_format_linear!(Argb8888, bgra = (8, 8, 8, 8));
+impl_format_linear!(Bgr565, rgb = (5, 6, 5));
+impl_format_linear!(Bgr888, rgb = (8, 8, 8));
+impl_format_linear!(Bgra8888, argb = (8, 8, 8, 8));
+impl_format_linear!(Bgrx8888, xrgb = (8, 8, 8, 8));
+impl_format_linear!(Rgb565, bgr = (5, 6, 5));
+impl_format_linear!(Rgb888, bgr = (8, 8, 8));
+impl_format_linear!(Rgba8888, abgr = (8, 8, 8, 8));
+impl_format_linear!(Rgbx8888, xbgr = (8, 8, 8, 8));
+impl_format_linear!(Xbgr8888, rgbx = (8, 8, 8, 8));
+impl_format_linear!(Xrgb8888, bgrx = (8, 8, 8, 8));
 
 #[cfg(test)]
 mod tests {
@@ -1123,5 +898,75 @@ mod tests {
         assert_eq!(bpp::<Rgbx8888>(), 32);
         assert_eq!(bpp::<Xbgr8888>(), 32);
         assert_eq!(bpp::<Xrgb8888>(), 32);
+    }
+
+    /// Channel bit offsets for channels listed with their sizes, skipping `x` padding.
+    fn offsets(mut chans: Vec<(char, usize)>, msb_first: bool) -> Vec<(char, usize)> {
+        if msb_first {
+            chans.reverse();
+        }
+        let mut off = 0;
+        let mut v: Vec<_> = chans
+            .into_iter()
+            .map(|(c, bits)| {
+                off += bits;
+                (c, off - bits)
+            })
+            .filter(|&(c, _)| c != 'x')
+            .collect();
+        v.sort();
+        v
+    }
+
+    /// Parses a name like `Argb8888`, which lists channels from the most
+    /// significant bit, into channel bit offsets.
+    fn parse_name(name: &str) -> Vec<(char, usize)> {
+        let (chans, bits) = name.split_at(name.find(|c: char| c.is_ascii_digit()).unwrap());
+        let v = chans
+            .chars()
+            .map(|c| c.to_ascii_lowercase())
+            .zip(bits.chars().map(|b| b.to_digit(10).unwrap() as usize))
+            .collect();
+        offsets(v, true)
+    }
+
+    fn rgb_offsets<F: Format<Layout: RgbLayout>>() -> Vec<(char, usize)> {
+        let mut v = vec![
+            ('r', F::Layout::R_OFFSET),
+            ('g', F::Layout::G_OFFSET),
+            ('b', F::Layout::B_OFFSET),
+        ];
+        v.sort();
+        v
+    }
+
+    fn rgba_offsets<F: Format<Layout: RgbaLayout>>() -> Vec<(char, usize)> {
+        let mut v = rgb_offsets::<F>();
+        v.push(('a', F::Layout::A_OFFSET));
+        v.sort();
+        v
+    }
+
+    /// Checks that each format's layout matches its name.
+    #[test]
+    fn layouts_match_names() {
+        macro_rules! check {
+            ($kind:ident $ty:ident) => {{
+                let actual = paste! { [<$kind _offsets>]::<$ty>() };
+                assert_eq!(parse_name(stringify!($ty)), actual, stringify!($ty));
+            }};
+        }
+        check!(rgba Abgr8888);
+        check!(rgba Argb8888);
+        check!(rgb Bgr565);
+        check!(rgb Bgr888);
+        check!(rgba Bgra8888);
+        check!(rgb Bgrx8888);
+        check!(rgb Rgb565);
+        check!(rgb Rgb888);
+        check!(rgba Rgba8888);
+        check!(rgb Rgbx8888);
+        check!(rgb Xbgr8888);
+        check!(rgb Xrgb8888);
     }
 }
