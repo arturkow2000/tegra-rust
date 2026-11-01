@@ -14,6 +14,7 @@ static CONTEXT: OnceCell<TracingContext> = OnceCell::new();
 pub trait ToTracy {
     fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B);
 }
+// Tracy takes frame images as R, G, B, A bytes in memory.
 impl ToTracy for colorspace::Rgba8888 {
     fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B) {
         client.frame_mark();
@@ -26,46 +27,57 @@ impl ToTracy for colorspace::Rgba8888 {
         );
     }
 }
-impl ToTracy for colorspace::Bgra8888 {
+impl ToTracy for colorspace::Argb8888 {
     fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B) {
-        let dst_stride = buf.width() as usize
-            * <<B::Format as Format>::Layout as Layout>::BPP.as_u8() as usize
-            / 8;
-        let mut dst = vec![0u8; buf.height() as usize * dst_stride];
-
-        let planes = [(buf.stride(), buf.as_ref())];
-        let mut dst_planes = [(dst_stride as u32, dst.as_mut())];
-
-        for y in 0..buf.height() {
-            for x in 0..buf.width() {
-                let Some(pixel) = Self::get_pixel(
-                    x,
-                    y,
-                    &planes,
-                    <<B::Format as Format>::Layout as Layout>::BPP,
-                ) else {
-                    error!("can't get pixel {x} {y}");
-                    unreachable!()
-                };
-                colorspace::Rgba8888::set_pixel(
-                    x,
-                    y,
-                    &mut dst_planes,
-                    <<B::Format as Format>::Layout as Layout>::BPP,
-                    pixel,
-                );
-            }
-        }
-
-        client.frame_mark();
-        client.frame_image(
-            dst.as_ref(),
-            buf.width().try_into().unwrap(),
-            buf.height().try_into().unwrap(),
-            1,
-            false,
-        );
+        upload_as_rgba8888(client, buf);
     }
+}
+impl ToTracy for colorspace::Abgr8888 {
+    fn upload<B: PixelBuffer<Format = Self> + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B) {
+        upload_as_rgba8888(client, buf);
+    }
+}
+
+fn upload_as_rgba8888<B: PixelBuffer + AsRef<[u8]>>(client: &tracy_client::Client, buf: &B)
+where
+    B::Format: Format<Encoding = <colorspace::Rgba8888 as Format>::Encoding>,
+{
+    let dst_stride =
+        buf.width() as usize * <<B::Format as Format>::Layout as Layout>::BPP.as_u8() as usize / 8;
+    let mut dst = vec![0u8; buf.height() as usize * dst_stride];
+
+    let planes = [(buf.stride(), buf.as_ref())];
+    let mut dst_planes = [(dst_stride as u32, dst.as_mut())];
+
+    for y in 0..buf.height() {
+        for x in 0..buf.width() {
+            let Some(pixel) = B::Format::get_pixel(
+                x,
+                y,
+                &planes,
+                <<B::Format as Format>::Layout as Layout>::BPP,
+            ) else {
+                error!("can't get pixel {x} {y}");
+                unreachable!()
+            };
+            colorspace::Rgba8888::set_pixel(
+                x,
+                y,
+                &mut dst_planes,
+                <<B::Format as Format>::Layout as Layout>::BPP,
+                pixel,
+            );
+        }
+    }
+
+    client.frame_mark();
+    client.frame_image(
+        dst.as_ref(),
+        buf.width().try_into().unwrap(),
+        buf.height().try_into().unwrap(),
+        1,
+        false,
+    );
 }
 
 pub struct TracingContext {

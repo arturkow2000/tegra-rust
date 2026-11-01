@@ -10,7 +10,7 @@ use syn::{
     parse::Nothing, parse_macro_input,
 };
 
-const RGB_FORMATS: &[(&str, &str)] = &[("Bgra8888", "bgra8888"), ("Rgba8888", "rgba8888")];
+const RGB_FORMATS: &[(&str, &str)] = &[("Argb8888", "argb8888"), ("Abgr8888", "abgr8888")];
 
 #[proc_macro_attribute]
 pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
