@@ -12,7 +12,8 @@ bitflags.workspace = true
 tracing.workspace = true
 pin-project.workspace = true
 futures-util.workspace = true
-tokio.workspace = true
+# spawn_blocking needs the runtime.
+tokio = { workspace = true, features = ["rt"] }
 getset.workspace = true
 host1x-core.path = "../host1x-core"
 host1x-buffer.path = "../host1x-buffer"
