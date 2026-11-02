@@ -380,6 +380,7 @@ dependencies = [
  "arbitrary-int",
  "host1x-client",
  "host1x-reg",
+ "tock-registers",
 ]
 
 [[package]]

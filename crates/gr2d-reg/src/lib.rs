@@ -17,18 +17,7 @@ unsafe impl host1x_client::Client for Client {
 // destinations; it reads destinations only for raster operations that use them.
 impl_registers![
     unsafe crate::Client,
-    /// Launch register: offset of the register whose write starts the operation.
-    ///
-    /// Every write to the register at `TRIGGER` starts an operation with the registers
-    /// programmed at that point. So it should point at the register written last, after
-    /// everything the operation depends on, and that register shouldn't be written earlier.
-    /// Register state persists between operations, so several operations can be started by
-    /// rewriting only what changes and then the trigger register.
-    ///
-    /// The TRM doesn't describe it. This is inferred from opentegra, which sets it to the
-    /// last register each operation writes: `DSTPS` (0x3a) for fills and copies, `SRCSIZE`
-    /// (0x37) for rotated copies and `TILEMODE` (0x46) for rotations.
-    pub TRIGGER0 OFFSET(0x09) RELOCATABLE(false) [
+    __TRIGGER0 OFFSET(0x09) RELOCATABLE(false) UNSAFE(true) [
         TRIGGER OFFSET(0) NUMBITS(16) []
     ],
     pub TRIGGER1 OFFSET(0x0a) RELOCATABLE(false) [
@@ -456,3 +445,44 @@ impl_registers![
     ],
     pub PATBASE OFFSET(0x47) RELOCATABLE(ReadOnly) [],
 ];
+
+/// Launch register: offset of the register whose write starts the operation.
+///
+/// Every write to the register at `TRIGGER` starts an operation with the registers
+/// programmed at that point. So it should point at the register written last, after
+/// everything the operation depends on, and that register shouldn't be written earlier.
+/// Register state persists between operations, so several operations can be started by
+/// rewriting only what changes and then the trigger register.
+///
+/// The TRM doesn't describe it. This is inferred from opentegra, which sets it to the
+/// last register each operation writes: `DSTPS` (0x3a) for fills and copies, `SRCSIZE`
+/// (0x37) for rotated copies and `TILEMODE` (0x46) for rotations.
+///
+/// # Safety
+/// An operation started too early runs with whatever its registers held before, possibly
+/// values left by an earlier task or job, so it may access memory outside the task's
+/// buffers. From this write on, the task must write the trigger register only once every
+/// register the operation depends on is programmed. TRIGGER0 persists between tasks, so
+/// tasks must set it themselves instead of relying on its previous value.
+#[allow(non_snake_case)]
+pub mod TRIGGER0 {
+    pub use super::__TRIGGER0::*;
+
+    /// Trigger operations on writes to register `R`.
+    ///
+    /// ```
+    /// use gr2d_reg::{Client, DSTPS, TRIGGER0};
+    /// use host1x_reg::RegisterValue;
+    ///
+    /// // Safety: doctest, nothing is written to the GPU.
+    /// let trigger = unsafe { TRIGGER0::on::<DSTPS::Register>() };
+    /// assert_eq!(RegisterValue::<Client>::value(&trigger), 0x3a);
+    /// ```
+    ///
+    /// # Safety
+    /// See [the register](self).
+    pub const unsafe fn on<R: host1x_reg::Register<crate::Client>>() -> Value {
+        // Safety: forwarded to the caller.
+        unsafe { new(TRIGGER.val(R::OFFSET.value() as u32)) }
+    }
+}
