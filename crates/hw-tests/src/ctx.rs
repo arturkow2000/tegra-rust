@@ -45,10 +45,10 @@ impl Gr2d {
         // even if kernel allows more, its hw that limits concurrently.
         // This hasn't been for tested for being optimal and may be changed in the future.
         let queues: Vec<_> = (0..min(MAX_CHANNELS, MAX_SYNCPOINTS))
-            .map(|_| Channel::<gr2d_reg::Client>::new(&dev))
+            .map(|_| Channel::<gr2d_reg::Client>::new(dev))
             .take_while(Result::is_ok)
-            .flat_map(|r| r)
-            .flat_map(|ch| SyncPoint::alloc(&dev).map(|sp| (ch, sp)))
+            .flatten()
+            .flat_map(|ch| SyncPoint::alloc(dev).map(|sp| (ch, sp)))
             .map(|(ch, sp)| Queue::new(ch, sp))
             .collect();
         assert!(!queues.is_empty(), "could not allocate any GR2D queue");
