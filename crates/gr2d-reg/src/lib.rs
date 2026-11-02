@@ -17,6 +17,17 @@ unsafe impl host1x_client::Client for Client {
 // destinations; it reads destinations only for raster operations that use them.
 impl_registers![
     unsafe crate::Client,
+    /// Launch register: offset of the register whose write starts the operation.
+    ///
+    /// Every write to the register at `TRIGGER` starts an operation with the registers
+    /// programmed at that point. So it should point at the register written last, after
+    /// everything the operation depends on, and that register shouldn't be written earlier.
+    /// Register state persists between operations, so several operations can be started by
+    /// rewriting only what changes and then the trigger register.
+    ///
+    /// The TRM doesn't describe it. This is inferred from opentegra, which sets it to the
+    /// last register each operation writes: `DSTPS` (0x3a) for fills and copies, `SRCSIZE`
+    /// (0x37) for rotated copies and `TILEMODE` (0x46) for rotations.
     pub TRIGGER0 OFFSET(0x09) RELOCATABLE(false) [
         TRIGGER OFFSET(0) NUMBITS(16) []
     ],
