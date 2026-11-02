@@ -7,3 +7,4 @@ edition = "2024"
 host1x-reg.path = "../host1x-reg"
 host1x-client.path = "../host1x-client"
 arbitrary-int.workspace = true
+tock-registers.workspace = true

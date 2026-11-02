@@ -116,7 +116,12 @@ where
         let stride = buffer.stride();
         let seq = (
             SetClass::<_, _, gr2d_reg::Client, _>::new(),
-            Mask::<2, 0, gr2d_reg::Client, _>::new((TRIGGER0::raw(0x3a), CMDSEL::OUTPUT::MEMORY)),
+            Mask::<2, 0, gr2d_reg::Client, _>::new((
+                // Safety: DSTPS is written only once, by the last command, after everything
+                // the fill depends on.
+                unsafe { TRIGGER0::on::<DSTPS::Register>() },
+                CMDSEL::OUTPUT::MEMORY,
+            )),
             clip.cmdseq::<Buffer::Format>(),
             Mask::<2, 1, gr2d_reg::Client, _>::new((
                 DSTBA::write(&mut buffer),
