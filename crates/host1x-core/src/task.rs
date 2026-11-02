@@ -15,9 +15,41 @@ use crate::job::Pipeline;
 /// was given) becomes input of the next one.
 ///
 /// # Safety
-/// Every relocation in the command sequence returned by [`Task::split`] must
-/// target a buffer branded with `'id`, i.e. one implementing
-/// [`host1x_buffer::MappedBuffer<'id, Self::Client>`].
+/// Tasks must not rely on the backend to catch bad commands. A kernel driver
+/// may check the command stream, and an IOMMU may confine the GPU to the
+/// buffers mapped by the process, but how thoroughly depends on the driver.
+/// Other backends may give the GPU access to all physical memory (Tegra 20 has
+/// no IOMMU). Even when contained, stray accesses can corrupt the process's
+/// own memory.
+///
+/// Assuming that every handle branded with `'id` describes its buffer
+/// accurately, executing the commands must not cause undefined behavior,
+/// whatever tasks run before or after them. In particular:
+///
+/// - The GPU may access memory only through relocations, never through raw
+///   addresses. Every relocation must target a buffer branded with `'id`, i.e.
+///   one implementing [`host1x_buffer::MappedBuffer<'id, Self::Client>`].
+/// - The GPU may read a buffer only through a relocation created from a
+///   [`host1x_buffer::ReadableBuffer`], and write it only through one created
+///   from a [`host1x_buffer::WritableBuffer`]. The access mode of each
+///   relocation must cover what the GPU actually does with the register it is
+///   written to.
+/// - Every access must stay within the buffer, as described by the handle's
+///   layout.
+/// - The task must program every register that affects how the GPU addresses
+///   memory (formats, sizes, strides, positions, ...) before starting an
+///   operation, instead of relying on values left by previous tasks or jobs.
+/// - The task must not increment syncpoints or use other Host1x class
+///   methods. Synchronization is up to the queue, which declares every
+///   increment it adds when submitting the job. An increment from a task
+///   wouldn't be accounted for, and could signal a fence before the GPU is
+///   done.
+/// - The commands must keep the channel in the class of [`Task::Client`], so
+///   that the queue's completion signal waits for that client.
+///
+/// These are the requirements known so far. The hardware isn't fully
+/// documented or understood, so this contract may be incomplete, and it may
+/// change in the future as more is learned about the hardware.
 pub unsafe trait Task<'id>: Sized {
     type Client: Client;
     type Output;
