@@ -21,7 +21,7 @@ use host1x_drm::{
 
 #[tokio::main]
 async fn main() {
-    let _guard = instrumentation::init();
+    instrumentation::init();
     info!("doing some GR2D tests");
 
     let gpu = TegraDRM::open("/dev/dri/card1").unwrap();
