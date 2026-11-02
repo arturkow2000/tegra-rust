@@ -4,6 +4,8 @@ use core::{iter::FusedIterator, mem::MaybeUninit, num::NonZeroUsize, ops::Deref,
 
 use host1x_client::Client;
 use host1x_reg::reloc::Relocation;
+#[cfg(doc)]
+use host1x_reg::RegisterValue;
 use snafu::{Snafu, ensure};
 use zerocopy::little_endian::U32 as U32LE;
 
@@ -200,6 +202,13 @@ macro_rules! impl_command_sequence {
 /// - [`CommandSequence::words`] must return exactly [`CommandSequence::N_WORDS`] elements.
 /// - [`CommandSequence::relocs`] must return exactly [`CommandSequence::N_RELOCS`] elements.
 /// - [`CommandSequence::try_write_to_slice`] must write exactly the same words that [`CommandSequence::words`] returns.
+/// - The words must be complete Host1x commands using only the SETCL, INCR, NONINCR and MASK
+///   opcodes (no IMM, GATHER, RESTART, ...). SETCL may only select the class of `C`, and
+///   registers may only be written with values their [`RegisterValue`] types allow. The
+///   command types in [`crate::cmd`] uphold this by construction, so it only matters for
+///   hand-written implementations, whose raw words aren't checked by those types.
+/// - Every word written to a relocatable register must be patched by exactly one relocation,
+///   and relocations must patch only such words.
 pub unsafe trait CommandSequence<C: Client> {
     /// Total number of words for entire command stream.
     const N_WORDS: usize;

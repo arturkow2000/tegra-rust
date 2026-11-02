@@ -89,7 +89,14 @@ impl<Buffer: PixelBuffer, Clip: ClipMode> Fill<Buffer, Clip> {
         }
     }
 }
-// Safety: the only relocation targets `buffer`, which is branded with 'id.
+// Safety:
+// - the only relocation targets `buffer`, which is branded with 'id and writable, and GR2D
+//   only writes the destination
+// - the destination surface is the whole buffer: its format, stride and size come from the
+//   buffer, at position 0 with linear tiling, so accesses stay within it (clipping only
+//   restricts them further, and truncated sizes only shrink the surface)
+// - starts with SETCL to GR2D, writes only GR2D registers and stays in the GR2D class
+// FIXME: CTRL0, TRIGGER1 and TRIGGER2 aren't written and are left from previous tasks.
 unsafe impl<'id, Buffer: PixelBuffer + WritableBuffer<'id, gr2d_reg::Client>, Clip: ClipMode>
     Task<'id> for Fill<Buffer, Clip>
 where

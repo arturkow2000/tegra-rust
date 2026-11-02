@@ -40,7 +40,9 @@ impl<'id, R, M, C: Client> Relocatable<'id, R, M, C> {
     /// # Safety
     /// This bypasses the brand check. Caller must ensure that the mapping belongs
     /// to the job identified by `'id` and that Rust's aliasing rules are respected
-    /// for the target buffer.
+    /// for the target buffer. The mapping must allow the access requested by `M`.
+    /// `buf_offset` and `shift` must give an address that `R` accepts, and every GPU
+    /// access through it must stay within the buffer.
     pub const unsafe fn for_raw_mapping(mapping: u32, buf_offset: u64, shift: u32) -> Self {
         Self {
             mapping,
