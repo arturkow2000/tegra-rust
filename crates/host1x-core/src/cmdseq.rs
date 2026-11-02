@@ -3,9 +3,9 @@
 use core::{iter::FusedIterator, mem::MaybeUninit, num::NonZeroUsize, ops::Deref, slice};
 
 use host1x_client::Client;
-use host1x_reg::reloc::Relocation;
 #[cfg(doc)]
 use host1x_reg::RegisterValue;
+use host1x_reg::reloc::Relocation;
 use snafu::{Snafu, ensure};
 use zerocopy::little_endian::U32 as U32LE;
 

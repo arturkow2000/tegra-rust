@@ -28,13 +28,19 @@ pub unsafe trait MappedBuffer<'id, C: host1x_client::Client>: Buffer {
 ///
 /// # Safety
 /// The mapping must allow `C` to read the buffer.
-pub unsafe trait ReadableBuffer<'id, C: host1x_client::Client>: MappedBuffer<'id, C> {}
+pub unsafe trait ReadableBuffer<'id, C: host1x_client::Client>:
+    MappedBuffer<'id, C>
+{
+}
 
 /// A buffer that is writable by given Host1x client.
 ///
 /// # Safety
 /// The mapping must allow `C` to write the buffer.
-pub unsafe trait WritableBuffer<'id, C: host1x_client::Client>: MappedBuffer<'id, C> {}
+pub unsafe trait WritableBuffer<'id, C: host1x_client::Client>:
+    MappedBuffer<'id, C>
+{
+}
 
 /// Shape of a buffer: how its content is organized in memory.
 ///
