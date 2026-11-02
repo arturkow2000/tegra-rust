@@ -15,7 +15,7 @@ use arbitrary_int::u12;
 use host1x_client::Client;
 use tock_registers::{LocalRegisterCopy, RegisterLongName, fields::FieldValue};
 
-use crate::reloc::{Relocatable, Relocation};
+use crate::reloc::{Relocatable, RelocatableRegister, Relocation};
 
 /// Define registers of a Host1x client.
 ///
@@ -38,10 +38,12 @@ use crate::reloc::{Relocatable, Relocation};
 ///   [`Register`], so values built from them have to be passed to the unsafe `new()` to get
 ///   a value that can be written. Document the safety requirements of writing the register
 ///   on the register itself.
-/// - `RELOCATABLE(true)` is for registers holding buffer addresses. They have no fields,
-///   values are created from branded buffer handles with `read()`, `write()` or `new()`,
-///   or with the unsafe `for_raw_mapping()`. Relocatable registers are always unsafe, so
-///   `RELOCATABLE(true) UNSAFE(false)` is rejected.
+/// - `RELOCATABLE(ReadOnly)`, `RELOCATABLE(WriteOnly)` and `RELOCATABLE(ReadWrite)` are for
+///   registers holding buffer addresses, and state the accesses the GPU makes through them
+///   (see [`reloc::RelocatableRegister`]). They have no fields, values are created from
+///   branded buffer handles with `read()` (`ReadOnly` registers only), `write()`
+///   (`WriteOnly` registers only) or `new()`, or with the unsafe `for_raw_mapping()`.
+///   Relocatable registers are always unsafe, so `UNSAFE(false)` is rejected for them.
 ///
 /// # Safety
 /// The macro implements the unsafe [`Register`] trait, so the invocation must start with
@@ -63,7 +65,7 @@ use crate::reloc::{Relocatable, Relocation};
 ///     /// # Safety
 ///     /// Writing must not do anything bad.
 ///     pub DANGER OFFSET(0x02) RELOCATABLE(false) UNSAFE(true) [ VALUE OFFSET(0) NUMBITS(8) [] ],
-///     pub ADDR OFFSET(0x03) RELOCATABLE(true) [],
+///     pub ADDR OFFSET(0x03) RELOCATABLE(WriteOnly) [],
 /// ];
 ///
 /// fn write<V: RegisterValue<Client>>(_: V) {}
@@ -103,13 +105,33 @@ use crate::reloc::{Relocatable, Relocation};
 /// # }
 /// impl_registers![
 ///     unsafe crate::Client,
-///     pub ADDR OFFSET(0x03) RELOCATABLE(true) [],
+///     pub ADDR OFFSET(0x03) RELOCATABLE(WriteOnly) [],
 /// ];
 ///
 /// fn write<V: RegisterValue<Client>>(_: V) {}
 /// fn main() {
 ///     write(tock_registers::LocalRegisterCopy::<u32, ADDR::Register>::new(0x8000_0000));
 /// }
+/// ```
+///
+/// Nor can a register the GPU writes through be given a read-only relocation:
+///
+/// ```compile_fail,E0271
+/// # use host1x_buffer::ReadableBuffer;
+/// # use host1x_reg::impl_registers;
+/// # pub struct Client;
+/// # unsafe impl host1x_client::Client for Client {
+/// #     const CLASS: arbitrary_int::u10 = arbitrary_int::u10::new(0x51);
+/// # }
+/// impl_registers![
+///     unsafe crate::Client,
+///     pub ADDR OFFSET(0x03) RELOCATABLE(WriteOnly) [],
+/// ];
+///
+/// fn read<'id>(buf: &impl ReadableBuffer<'id, Client>) {
+///     let _ = ADDR::read(buf);
+/// }
+/// # fn main() {}
 /// ```
 ///
 /// Relocatable registers can't be declared safe:
@@ -122,7 +144,7 @@ use crate::reloc::{Relocatable, Relocation};
 /// # }
 /// impl_registers![
 ///     unsafe crate::Client,
-///     pub ADDR OFFSET(0x03) RELOCATABLE(true) UNSAFE(false) [],
+///     pub ADDR OFFSET(0x03) RELOCATABLE(WriteOnly) UNSAFE(false) [],
 /// ];
 /// # fn main() {}
 /// ```
@@ -159,45 +181,6 @@ macro_rules! impl_registers {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __impl_registers {
-    { @munch(($($ty:ident $(: $bound:path)?),*)$(, $class:ty)?) $(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE(true) UNSAFE($(true)?) [] } => {
-        #[allow(nonstandard_style)]
-        $(#[$inner])*
-        $vis mod $reg {
-            use $crate::__reexports::arbitrary_int::u12;
-            use $crate::__reexports::host1x_buffer::{ReadableBuffer, WritableBuffer};
-            use $crate::__reexports::host1x_client::Client;
-            use $crate::reloc::{Relocatable, ReadOnly, ReadWrite, WriteOnly};
-
-            #[derive(Clone, Copy)]
-            pub struct Register;
-            // Deliberately does not implement RegisterLongName so tock_registers can't be used
-            // to bypass constructors.
-            unsafe impl<$($ty $(: $bound)?),*> $crate::Register<$($class)?> for Register {
-                const OFFSET: u12 = u12::new($off);
-            }
-
-            /// # Safety
-            /// See [`Relocatable::for_raw_mapping`].
-            pub const unsafe fn for_raw_mapping<'id, C: Client>(mapping: u32, offset: u64, shift: u32) -> Relocatable<'id, Register, ReadWrite, C> {
-                unsafe { Relocatable::for_raw_mapping(mapping, offset, shift) }
-            }
-
-            pub fn read<'id, C: Client>(buf: &impl ReadableBuffer<'id, C>) -> Relocatable<'id, Register, ReadOnly, C> {
-                Relocatable::read(buf)
-            }
-
-            pub fn write<'id, C: Client>(buf: &mut impl WritableBuffer<'id, C>) -> Relocatable<'id, Register, WriteOnly, C> {
-                Relocatable::write(buf)
-            }
-
-            pub fn new<'id, C: Client>(buf: &mut (impl ReadableBuffer<'id, C> + WritableBuffer<'id, C>)) -> Relocatable<'id, Register, ReadWrite, C> {
-                Relocatable::new(buf)
-            }
-        }
-    };
-    { @munch(($($ty:ident $(: $bound:path)?),*)$(, $class:ty)?) $(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE(true) UNSAFE(false) $fields:tt } => {
-        ::core::compile_error!(::core::concat!(::core::stringify!($reg), ": RELOCATABLE(true) implies UNSAFE(true)"));
-    };
     { @munch(($($ty:ident $(: $bound:path)?),*)$(, $class:ty)?) $(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE(false) UNSAFE(true) $fields:tt } => {
         #[allow(non_snake_case)]
         $(#[$inner])*
@@ -297,6 +280,62 @@ macro_rules! __impl_registers {
             }
         }
     };
+    { @munch(($($ty:ident $(: $bound:path)?),*)$(, $class:ty)?) $(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE(true) $($rest:tt)* } => {
+        ::core::compile_error!(::core::concat!(::core::stringify!($reg), ": give the GPU access instead: RELOCATABLE(ReadOnly), RELOCATABLE(WriteOnly) or RELOCATABLE(ReadWrite)"));
+    };
+    { @munch(($($ty:ident $(: $bound:path)?),*)$(, $class:ty)?) $(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE($access:ident) UNSAFE(false) $fields:tt } => {
+        ::core::compile_error!(::core::concat!(::core::stringify!($reg), ": relocatable registers are always unsafe, they can't be UNSAFE(false)"));
+    };
+    { @munch(($($ty:ident $(: $bound:path)?),*)$(, $class:ty)?) $(#[$inner:meta])* $vis:vis $reg:ident OFFSET($off:literal) RELOCATABLE($access:ident) UNSAFE($(true)?) [] } => {
+        #[allow(nonstandard_style)]
+        $(#[$inner])*
+        $vis mod $reg {
+            use $crate::__reexports::arbitrary_int::u12;
+            use $crate::__reexports::host1x_buffer::{ReadableBuffer, WritableBuffer};
+            use $crate::__reexports::host1x_client::Client;
+            use $crate::reloc::{Relocatable, RelocatableRegister, ReadOnly, ReadWrite, WriteOnly};
+
+            #[derive(Clone, Copy)]
+            pub struct Register;
+            // Deliberately does not implement RegisterLongName so tock_registers can't be used
+            // to bypass constructors.
+            unsafe impl<$($ty $(: $bound)?),*> $crate::Register<$($class)?> for Register {
+                const OFFSET: u12 = u12::new($off);
+            }
+            unsafe impl<$($ty $(: $bound)?),*> RelocatableRegister<$($class)?> for Register {
+                type Access = $crate::reloc::$access;
+            }
+
+            /// # Safety
+            /// See [`Relocatable::for_raw_mapping`].
+            pub const unsafe fn for_raw_mapping<'id, C: Client>(mapping: u32, offset: u64, shift: u32) -> Relocatable<'id, Register, ReadWrite, C> {
+                unsafe { Relocatable::for_raw_mapping(mapping, offset, shift) }
+            }
+
+            /// Available if the GPU only reads through the register.
+            pub fn read<'id, C: Client>(buf: &impl ReadableBuffer<'id, C>) -> Relocatable<'id, Register, ReadOnly, C>
+            where
+                Register: RelocatableRegister<C, Access = ReadOnly>,
+            {
+                Relocatable::read(buf)
+            }
+
+            /// Available if the GPU only writes through the register.
+            pub fn write<'id, C: Client>(buf: &mut impl WritableBuffer<'id, C>) -> Relocatable<'id, Register, WriteOnly, C>
+            where
+                Register: RelocatableRegister<C, Access = WriteOnly>,
+            {
+                Relocatable::write(buf)
+            }
+
+            pub fn new<'id, C: Client>(buf: &mut (impl ReadableBuffer<'id, C> + WritableBuffer<'id, C>)) -> Relocatable<'id, Register, ReadWrite, C>
+            where
+                Register: RelocatableRegister<C>,
+            {
+                Relocatable::new(buf)
+            }
+        }
+    };
 }
 
 /// A register for some device that is behind Host1x interface.
@@ -359,7 +398,7 @@ unsafe impl<C: Client, R: RegisterLongName + Register<C>> RegisterValue<C> for F
         None
     }
 }
-unsafe impl<C: Client, R: Register<C>, M> RegisterValue<C> for Relocatable<'_, R, M, C> {
+unsafe impl<C: Client, R: RelocatableRegister<C>, M> RegisterValue<C> for Relocatable<'_, R, M, C> {
     type R = R;
     const HAS_RELOCATION: bool = true;
 

@@ -13,7 +13,8 @@ unsafe impl host1x_client::Client for Client {
 
 // Safety: offsets follow the Tegra 20 TRM. Buffer address registers are relocatable, other
 // registers can only break safety together with them (buffer geometry), which tasks setting
-// buffer addresses must get right.
+// buffer addresses must get right. GR2D only reads sources and patterns, and always writes
+// destinations; it reads destinations only for raster operations that use them.
 impl_registers![
     unsafe crate::Client,
     pub TRIGGER0 OFFSET(0x09) RELOCATABLE(false) [
@@ -306,7 +307,7 @@ impl_registers![
         PATMONOH OFFSET(16) NUMBITS(16) [],
         PATMONOW OFFSET(0) NUMBITS(16) [],
     ],
-    pub PATBA OFFSET(0x26) RELOCATABLE(true) [],
+    pub PATBA OFFSET(0x26) RELOCATABLE(ReadOnly) [],
     pub PATOS OFFSET(0x27) RELOCATABLE(false) [
         PATYO OFFSET(28) NUMBITS(4) [],
         PATXO OFFSET(24) NUMBITS(4) [],
@@ -323,9 +324,9 @@ impl_registers![
     pub PATKEY OFFSET(0x2a) RELOCATABLE(false) [
         PATKEY OFFSET(0) NUMBITS(32) [],
     ],
-    pub DSTBA OFFSET(0x2b) RELOCATABLE(true) [],
-    pub DSTBA_B OFFSET(0x2c) RELOCATABLE(true) [],
-    pub DSTBA_C OFFSET(0x2d) RELOCATABLE(true) [],
+    pub DSTBA OFFSET(0x2b) RELOCATABLE(WriteOnly) [],
+    pub DSTBA_B OFFSET(0x2c) RELOCATABLE(WriteOnly) [],
+    pub DSTBA_C OFFSET(0x2d) RELOCATABLE(WriteOnly) [],
     pub DSTST OFFSET(0x2e) RELOCATABLE(false) [
         DSTS OFFSET(0) NUMBITS(16) [],
     ],
@@ -336,8 +337,8 @@ impl_registers![
         SRCMONOH OFFSET(16) NUMBITS(16) [],
         SRCMONOW OFFSET(0) NUMBITS(16) [],
     ],
-    pub SRCBA OFFSET(0x31) RELOCATABLE(true) [],
-    pub SRCBA_B OFFSET(0x32) RELOCATABLE(true) [],
+    pub SRCBA OFFSET(0x31) RELOCATABLE(ReadOnly) [],
+    pub SRCBA_B OFFSET(0x32) RELOCATABLE(ReadOnly) [],
     pub SRCST OFFSET(0x33) RELOCATABLE(false) [
         SRCS OFFSET(0) NUMBITS(16) [],
     ],
@@ -442,5 +443,5 @@ impl_registers![
             TILED = 1,
         ],
     ],
-    pub PATBASE OFFSET(0x47) RELOCATABLE(true) [],
+    pub PATBASE OFFSET(0x47) RELOCATABLE(ReadOnly) [],
 ];

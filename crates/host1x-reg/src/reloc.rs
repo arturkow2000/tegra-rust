@@ -4,8 +4,27 @@ use core::marker::PhantomData;
 
 use getset::CopyGetters;
 pub use host1x_buffer::access::{ReadOnly, ReadWrite, WriteOnly};
-use host1x_buffer::{ReadableBuffer, WritableBuffer};
+use host1x_buffer::{ReadableBuffer, WritableBuffer, access::Access};
 use host1x_client::Client;
+
+use crate::Register;
+
+/// A register holding a buffer address, see [`Relocatable`].
+///
+/// Declare these with `RELOCATABLE(..)` in [`impl_registers!`](crate::impl_registers).
+///
+/// # Safety
+/// [`RelocatableRegister::Access`] must cover every access the GPU makes through the
+/// register regardless of other registers: [`ReadOnly`] if it only ever reads,
+/// [`WriteOnly`] if it only ever writes, [`ReadWrite`] otherwise. Accesses that depend
+/// on other registers, such as destination reads of some raster operations, are left
+/// to the tasks programming them.
+pub unsafe trait RelocatableRegister<C: Client>: Register<C> {
+    /// Accesses the GPU makes through the register. [`Relocatable::read`] needs
+    /// [`ReadOnly`], [`Relocatable::write`] needs [`WriteOnly`], while
+    /// [`Relocatable::new`] works for every register.
+    type Access: Access;
+}
 
 /// A relocatable memory pointer.
 ///
@@ -56,7 +75,9 @@ impl<'id, R, M, C: Client> Relocatable<'id, R, M, C> {
     }
 }
 
-impl<'id, R, C: Client> Relocatable<'id, R, ReadOnly, C> {
+impl<'id, R: RelocatableRegister<C, Access = ReadOnly>, C: Client>
+    Relocatable<'id, R, ReadOnly, C>
+{
     /// Create relocatable address for reading from the buffer.
     pub fn read(buf: &impl ReadableBuffer<'id, C>) -> Self {
         // Safety: `MappedBuffer` contract guarantees that the mapping belongs
@@ -65,7 +86,9 @@ impl<'id, R, C: Client> Relocatable<'id, R, ReadOnly, C> {
     }
 }
 
-impl<'id, R, C: Client> Relocatable<'id, R, WriteOnly, C> {
+impl<'id, R: RelocatableRegister<C, Access = WriteOnly>, C: Client>
+    Relocatable<'id, R, WriteOnly, C>
+{
     /// Create relocatable address for writing to the buffer.
     pub fn write(buf: &mut impl WritableBuffer<'id, C>) -> Self {
         // Safety: `MappedBuffer` contract guarantees that the mapping belongs
@@ -74,7 +97,7 @@ impl<'id, R, C: Client> Relocatable<'id, R, WriteOnly, C> {
     }
 }
 
-impl<'id, R, C: Client> Relocatable<'id, R, ReadWrite, C> {
+impl<'id, R: RelocatableRegister<C>, C: Client> Relocatable<'id, R, ReadWrite, C> {
     // TODO: support offsets in safe API.
 
     /// Create relocatable address for reading and writing the buffer.

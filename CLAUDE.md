@@ -58,14 +58,14 @@ toolchains, and the env vars they need, so no setup is required.
 ## Core design: how a GPU job flows
 
 1. **Registers** are declared with
-   `impl_registers![unsafe crate::Client, pub NAME OFFSET(..) RELOCATABLE(bool) UNSAFE(bool) [fields]]`
+   `impl_registers![unsafe crate::Client, pub NAME OFFSET(..) RELOCATABLE(false | ReadOnly | WriteOnly | ReadWrite) UNSAFE(bool) [fields]]`
    (the `unsafe` keyword is required, because the macro implements the unsafe `Register` trait; `UNSAFE` is optional, defaults to `false`; the client path is resolved inside the generated
    module, so make it absolute). Each register becomes a module (`gr2d_reg::CTRLMAIN::TURBOFILL::ENABLE`,
    `DSTSIZE::DSTWIDTH.val(w)`, `X::raw(..)`, `X::zero()`). Mark registers whose writes can break
    safety `UNSAFE(true)`: their fields live on `X::Fields`, which isn't a `Register`, and values must
    go through the unsafe `X::new(fields)`; document the requirements on the register.
-   `RELOCATABLE(true)` implies `UNSAFE(true)`. These registers have no fields. Instead you build them from a
-   branded buffer handle with `read(&buf)` / `write(&mut buf)` / `new(&mut buf)`. The returned
+   Address registers are declared `RELOCATABLE(<GPU access>)`, which implies `UNSAFE(true)`. These registers have no fields. Instead you build them from a
+   branded buffer handle with `read(&buf)` (`ReadOnly` registers) / `write(&mut buf)` (`WriteOnly`) / `new(&mut buf)` (any). The returned
    `Relocatable<'id, ..>` carries the buffer's brand, not a borrow, so the handle can be moved on.
    Register types of unsafe registers deliberately don't implement `RegisterLongName`, so tock's
    `FieldValue` / `LocalRegisterCopy` can't carry raw values for them.
