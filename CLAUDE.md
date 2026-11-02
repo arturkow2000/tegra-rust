@@ -37,8 +37,6 @@ toolchains, and the env vars they need, so no setup is required.
   brands are created with `guard!()` only. The fork requires nightly. It is excluded from the workspace
   and used as a path dependency. Run its tests with `cargo test` inside the directory, and re-run them
   after nightly bumps: brand soundness depends on `super let` semantics.
-- `external/LinuxTracepoints-Rust` and `external/perf-event` are gitlinks without `.gitmodules`
-  entries, so they can't be checked out. They aren't used yet.
 
 ## Crate layout (bottom-up)
 
