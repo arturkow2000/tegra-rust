@@ -3,7 +3,7 @@ use core::fmt;
 use crate::{Encoding, Rgb, RgbAlpha};
 
 #[derive(Clone, Copy)]
-pub struct Color<E: Encoding + ?Sized>(pub(crate) E::Storage);
+pub struct Color<E: Encoding>(pub(crate) E::Storage);
 impl<E: Rgb> Color<E> {
     // TODO: make this const
     // we need https://github.com/rust-lang/rust/issues/143874
@@ -71,14 +71,14 @@ impl<E: RgbAlpha> Color<E> {
     }
 }
 
-impl<E: Encoding + ?Sized> PartialEq for Color<E> {
+impl<E: Encoding> PartialEq for Color<E> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
-impl<E: Encoding + ?Sized> Eq for Color<E> {}
+impl<E: Encoding> Eq for Color<E> {}
 
-impl<E: Encoding + ?Sized> fmt::Debug for Color<E> {
+impl<E: Encoding> fmt::Debug for Color<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = f.debug_struct("Color");
         for (k, v) in E::enumerate_channels(&self.0) {
