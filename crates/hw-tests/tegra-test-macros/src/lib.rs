@@ -1,7 +1,7 @@
 //! Macros for GR2D hardware tests
 //!
-//! [`test!`] internally calls into `rstest` but additionally uses supports
-//! configures tokio, tracing spans, and supports tests generic over formats.
+//! [`#[test]`](macro@test) internally calls into `rstest`, but additionally
+//! configures tokio and tracing spans, and supports tests generic over formats.
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
