@@ -24,3 +24,10 @@ run release="" bin="":
 test release="":
     cargo test --workspace {{ "--exclude=" + hw_pkgs }} {{ release }}
     cargo test {{ flags }} {{ "--package=" + hw_pkgs }} {{ release }}
+
+# Check formatting, cross-compile everything for the device and run clippy,
+# failing on any warning. The pre-commit hook runs this on the staged tree.
+check:
+    cargo fmt --check
+    cargo build {{ flags }} --workspace --all-targets
+    cargo clippy --workspace --all-targets -- -D warnings

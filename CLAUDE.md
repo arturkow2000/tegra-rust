@@ -20,6 +20,10 @@ toolchains, and the env vars they need, so no setup is required.
 - `cargo run` with a tegra20/armv7 target uses [.vscode/remote-run.sh](.vscode/remote-run.sh)
   as the runner (set in [.cargo/config.toml](.cargo/config.toml)). It uploads the binary to
   `root@192.168.0.163` over SSH and runs it there with `RUST_LOG=debug`. This needs real hardware.
+- `just check` checks formatting, cross-compiles all targets for the device and runs clippy
+  with `-D warnings`. The pre-commit hook in [.githooks/](.githooks/) runs it on a copy of the
+  staged tree under `target/pre-commit`, and the devcontainer enables the hook with
+  `core.hooksPath`. Keep the tree warning-free, and don't bypass the hook with `--no-verify`.
 - Host tests work for the `no_std`/pure crates:
   ```
   cargo test -p host1x-core -p host1x-reg -p colorspace

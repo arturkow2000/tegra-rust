@@ -19,6 +19,7 @@
     "runArgs": [
         "--mount=type=volume,source=claude-tegra-rust,destination=/home/vscode/.claude"
     ],
+    "postCreateCommand": "git config core.hooksPath .githooks",
     "containerEnv": {
         "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
     },

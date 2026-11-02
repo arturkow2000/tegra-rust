@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Runs `just check` on the staged tree, so unstaged changes neither hide nor cause
+# failures. Enable with `git config core.hooksPath .githooks`, skip once with
+# `git commit --no-verify`.
+set -euo pipefail
+
+top="$(git rev-parse --show-toplevel)"
+# Fixed paths keep cargo's caches warm between commits.
+work="$top/target/pre-commit"
+export src="$work/src"
+
+rm -rf "$src"
+mkdir -p "$src"
+git checkout-index --all --prefix="$src/"
+
+# checkout-index leaves submodules empty, link their checked-out working trees.
+git submodule foreach --quiet --recursive \
+    'rm -rf "$src/$displaypath" && ln -s "$toplevel/$sm_path" "$src/$displaypath"'
+
+cd "$src"
+CARGO_TARGET_DIR="$work/target" just check
