@@ -17,5 +17,5 @@ pub enum Error {
     SyncobjNotSupported,
 
     #[snafu(display("unknown I/O error"))]
-    IOError { source: io::Error },
+    Io { source: io::Error },
 }

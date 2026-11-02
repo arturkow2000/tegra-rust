@@ -25,7 +25,7 @@ impl<F: Format> sealed::SealedBufferType for PixelBuffer<F> {
     type Desc = PixelDesc<F>;
 
     fn desc(&self, size: NonZeroU32) -> PixelDesc<F> {
-        let stride = size.get() / self.height.get();
+        let stride = size.get() / self.height;
         PixelDesc::new(size.get(), self.width.get(), self.height.get(), stride)
     }
 }

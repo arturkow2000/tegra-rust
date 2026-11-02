@@ -185,7 +185,7 @@ impl<MM: MappingMode, F: Format> host1x_buffer::PixelLayout for GenericBuffer<MM
     }
 
     fn stride(&self) -> u32 {
-        self.size.get() / self.typ_dat.height.get()
+        self.size.get() / self.typ_dat.height
     }
 }
 impl<MM: MappingMode, T: BufferType> Drop for GenericBuffer<MM, T> {
