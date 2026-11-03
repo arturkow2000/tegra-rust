@@ -44,8 +44,8 @@ impl p::ClipMode for Clip {
             ROPFADE::ROP::COPY,
             CLIPLEFTTOP::CLIPL.val(self.0.top_left.x as _)
                 + CLIPLEFTTOP::CLIPT.val(self.0.top_left.y as _),
-            CLIPRIGHTBOT::CLIPR.val(self.0.top_left.x as u32 + self.0.size.width as u32)
-                + CLIPRIGHTBOT::CLIPB.val(self.0.top_left.y as u32 + self.0.size.height as u32),
+            CLIPRIGHTBOT::CLIPR.val(self.0.top_left.x as u32 + self.0.size.width)
+                + CLIPRIGHTBOT::CLIPB.val(self.0.top_left.y as u32 + self.0.size.height),
         )),)
     }
 }

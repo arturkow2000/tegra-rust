@@ -121,7 +121,7 @@ pub struct Relocation {
     /// Byte offset relative to target buffer base.
     pub buf_offset: u64,
 
-    /// How many bits to shift right the address before patching it into command stream.
-    // TODO: What's the use of this feature?
+    /// How many bits to shift right the address before patching it into command stream,
+    /// for registers that hold addresses in units larger than a byte.
     pub shift: u32,
 }

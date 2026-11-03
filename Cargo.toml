@@ -23,8 +23,6 @@ drm-fourcc = "2"
 pin-project = "1"
 futures-util = "0.3"
 tokio = "1"
-tokio-util = "0.7"
-futures = { version = "0.3", default-features = false }
 rustix = "1"
 bitflags = "1"
 snafu = { version = "0.9", default-features = false }
@@ -35,12 +33,9 @@ tracy-client = "0.18"
 zerocopy = "0.8"
 tock-registers = "0.10"
 arbitrary-int = { version = "2", default-features = false }
-anyhow = "1"
-valuable = "0.1"
 once_cell = "1"
 getset = "0.1"
 embedded-graphics = "0.8"
 paste = "1"
-palette = "0.7"
 bytemuck = "1"
 generativity = { path = "external/generativity" }

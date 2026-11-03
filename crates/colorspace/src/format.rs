@@ -538,7 +538,7 @@ fn get_ch<T: UnsignedInteger<UnderlyingType: AnyBitPattern>>(
     // TODO: accept ch_off as generic parameter when stabilized? Currently we need #![feature(generic_const_exprs)]
 
     // We'll get to this later
-    debug_assert!(ch_off % 8 == 0);
+    debug_assert!(ch_off.is_multiple_of(8));
 
     let pixel_off = y as usize * stride as usize + x as usize * (bpp.as_u8() as usize / 8);
     let off = pixel_off + ch_off / 8;
@@ -662,7 +662,7 @@ fn set_ch<T: UnsignedInteger<UnderlyingType: Pod>>(
     // TODO: accept ch_off as generic parameter when stabilized? Currently we need #![feature(generic_const_exprs)]
 
     // We'll get to this later
-    debug_assert!(ch_off % 8 == 0);
+    debug_assert!(ch_off.is_multiple_of(8));
 
     let pixel_off = y as usize * stride as usize + x as usize * (bpp.as_u8() as usize / 8);
     let off = pixel_off + ch_off / 8;
@@ -707,7 +707,7 @@ where
     let (r_plane_stride, r_plane) =
         some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::R_PLANE));
     set_ch::<<F::Encoding as Rgb>::R>(
-        &mut **r_plane,
+        r_plane,
         *r_plane_stride,
         x,
         y,
@@ -719,7 +719,7 @@ where
     let (g_plane_stride, g_plane) =
         some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::G_PLANE));
     set_ch::<<F::Encoding as Rgb>::G>(
-        &mut **g_plane,
+        g_plane,
         *g_plane_stride,
         x,
         y,
@@ -731,7 +731,7 @@ where
     let (b_plane_stride, b_plane) =
         some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::B_PLANE));
     set_ch::<<F::Encoding as Rgb>::B>(
-        &mut **b_plane,
+        b_plane,
         *b_plane_stride,
         x,
         y,
@@ -776,7 +776,7 @@ where
     let (r_plane_stride, r_plane) =
         some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::R_PLANE));
     set_ch::<<F::Encoding as Rgb>::R>(
-        &mut **r_plane,
+        r_plane,
         *r_plane_stride,
         x,
         y,
@@ -788,7 +788,7 @@ where
     let (g_plane_stride, g_plane) =
         some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::G_PLANE));
     set_ch::<<F::Encoding as Rgb>::G>(
-        &mut **g_plane,
+        g_plane,
         *g_plane_stride,
         x,
         y,
@@ -800,7 +800,7 @@ where
     let (b_plane_stride, b_plane) =
         some_or_false!(planes.get_mut(<F::Layout as RgbLayout>::B_PLANE));
     set_ch::<<F::Encoding as Rgb>::B>(
-        &mut **b_plane,
+        b_plane,
         *b_plane_stride,
         x,
         y,
@@ -811,7 +811,7 @@ where
     let (a_plane_stride, a_plane) =
         some_or_false!(planes.get_mut(<F::Layout as RgbaLayout>::A_PLANE));
     set_ch::<<F::Encoding as RgbAlpha>::A>(
-        &mut **a_plane,
+        a_plane,
         *a_plane_stride,
         x,
         y,

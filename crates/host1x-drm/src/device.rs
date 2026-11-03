@@ -10,7 +10,7 @@ use rustix::fs::{Mode, OFlags};
 use snafu::{ResultExt as _, ensure};
 use tracing::{Span, field};
 
-use self::error::{IOSnafu, NotTegraDevSnafu, Result, SyncobjNotSupportedSnafu};
+use self::error::{IoSnafu, NotTegraDevSnafu, Result, SyncobjNotSupportedSnafu};
 
 mod any;
 mod error;
@@ -43,7 +43,7 @@ impl TegraDRM {
     ))]
     pub unsafe fn try_from_fd(fd: OwnedFd) -> Result<Self> {
         let dev = any::AnyDevice::try_from_fd(fd)?;
-        let driver = dev.get_driver().context(IOSnafu)?;
+        let driver = dev.get_driver().context(IoSnafu)?;
         // Ensure the device is driven by Linux `tegra` driver.
         // This check is critical and large portion of this crate depends on this to
         // provide safe APIs.
@@ -70,7 +70,7 @@ impl TegraDRM {
 
         let fd = rustix::fs::open(path, OFlags::RDWR | OFlags::CLOEXEC, Mode::empty())
             .map_err(Into::into)
-            .context(IOSnafu)?;
+            .context(IoSnafu)?;
         // Safety: the file has just been opened, the only file descriptor referring to it is `fd`.
         unsafe { Self::try_from_fd(fd) }
     }

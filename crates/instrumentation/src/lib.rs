@@ -133,6 +133,8 @@ pub fn get_context() -> &'static TracingContext {
     CONTEXT.get().expect("tracing context initialized")
 }
 
+/// # Safety
+/// The context must have been initialized with [`init`] or [`init_for_testing`].
 pub unsafe fn get_context_unchecked() -> &'static TracingContext {
     unsafe { CONTEXT.get_unchecked() }
 }

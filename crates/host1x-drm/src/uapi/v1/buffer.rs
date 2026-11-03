@@ -158,8 +158,8 @@ impl<T: BufferType> AsMut<[u8]> for GenericBuffer<ReadWrite, T> {
 }
 // We don't support write-only (would it even have any real use?). In WO we can't expose [u8] slice directly because that implies
 // it is readable.
-// Rust currently doesn't have write-only references so we would have use some type of write-only
-// wrapper, perhabs something like https://docs.rs/write_ref/latest/write_ref/ or https://github.com/gfx-rs/wgpu/blob/81eca17db8a92288b866f3baf93498d7b2225de7/wgpu-types/src/write_only.rs
+// Rust currently doesn't have write-only references so we would have to use some type of write-only
+// wrapper, perhaps something like https://docs.rs/write_ref/latest/write_ref/ or https://github.com/gfx-rs/wgpu/blob/81eca17db8a92288b866f3baf93498d7b2225de7/wgpu-types/src/write_only.rs
 // would do.
 impl<MM: MappingMode, T: BufferType> host1x_buffer::Layout for GenericBuffer<MM, T> {
     fn size(&self) -> u32 {
@@ -185,7 +185,7 @@ impl<MM: MappingMode, F: Format> host1x_buffer::PixelLayout for GenericBuffer<MM
     }
 
     fn stride(&self) -> u32 {
-        self.size.get() / self.typ_dat.height.get()
+        self.size.get() / self.typ_dat.height
     }
 }
 impl<MM: MappingMode, T: BufferType> Drop for GenericBuffer<MM, T> {

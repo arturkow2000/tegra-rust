@@ -336,6 +336,10 @@ pub fn channel_close(fd: &TegraDRM, context: u32) -> io::Result<()> {
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "mirrors the fields of the submit ioctl"
+)]
 pub unsafe fn channel_submit(
     fd: &TegraDRM,
     context: u32,

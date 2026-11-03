@@ -7,7 +7,7 @@ use drm::node::constants::DRM_MAJOR;
 use rustix::fs::{FileType, fstat, major};
 use snafu::{ResultExt as _, ensure};
 
-use super::error::{IOSnafu, NotDrmDevSnafu, Result};
+use super::error::{IoSnafu, NotDrmDevSnafu, Result};
 
 #[derive(Debug)]
 pub struct AnyDevice {
@@ -16,7 +16,7 @@ pub struct AnyDevice {
 
 impl AnyDevice {
     pub fn try_from_fd(handle: OwnedFd) -> Result<Self> {
-        let st = fstat(handle.as_fd()).map_err(Into::into).context(IOSnafu)?;
+        let st = fstat(handle.as_fd()).map_err(Into::into).context(IoSnafu)?;
         let typ = FileType::from_raw_mode(st.st_mode);
         ensure!(
             typ == FileType::CharacterDevice && major(st.st_rdev) == DRM_MAJOR,

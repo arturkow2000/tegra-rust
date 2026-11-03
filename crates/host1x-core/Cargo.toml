@@ -19,3 +19,7 @@ host1x-buffer.path = "../host1x-buffer"
 # But as cargo currently has no [doc-dependencies] or any equivalent we cannot
 # specify cannot add dependencies for documentation.
 gr2d-reg.path = "../gr2d-reg"
+
+[lints.cargo]
+# gr2d-reg is only used by tests and doc links, see above.
+unused_dependencies = "allow"
